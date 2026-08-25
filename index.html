@@ -3,29 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Clip-style Orange Vector Overlay</title>
 <style>
   :root{color-scheme:dark;--orange:#ff6a00}
   *{box-sizing:border-box}
   html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;font-family:Inter,system-ui,-apple-system,sans-serif}
   #stage{position:fixed;inset:0;overflow:hidden;background:#090909}
-  #video,#youtubeHost{position:absolute;inset:0;width:100%;height:100%;background:#111}
+  #video{position:absolute;inset:0;width:100%;height:100%;background:#111}
   #video{object-fit:cover}
-  #youtubeHost{display:none;background:#000}
-  #youtubeHost iframe{display:block;width:100%;height:100%;border:0}
-  #youtubeHost.youtube-notice{
-    display:none;place-items:center;padding:24px;color:#fff;text-align:center;
-    background:radial-gradient(circle at 50% 42%,#252525 0,#111 48%,#070707 100%)
-  }
-  #youtubeHost.youtube-notice .notice-card{width:min(560px,90vw);padding:28px;border:1px solid rgba(255,255,255,.15);border-radius:18px;background:rgba(10,10,10,.78)}
-  #youtubeHost.youtube-notice strong{display:block;margin-bottom:10px;color:#ff6a00;font-size:clamp(19px,2.2vw,30px);letter-spacing:.04em}
-  #youtubeHost.youtube-notice p{margin:0;color:rgba(255,255,255,.7);font-size:14px;line-height:1.55}
-  #youtubeHost.youtube-notice a{display:inline-flex;margin-top:18px;padding:11px 17px;border:1px solid #ff6a00;border-radius:10px;color:#ffd0ae;text-decoration:none;font-weight:800}
-  #stage.youtube #video{display:none}
-  #stage.youtube #youtubeHost{display:block}
-  #stage.youtube #youtubeHost.youtube-notice{display:grid}
   #fx{position:absolute;inset:0;z-index:2;width:100%;height:100%;pointer-events:none}
+  #fileDrop{position:absolute;inset:0;z-index:7;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 50% 44%,rgba(32,20,12,.3),rgba(0,0,0,.86) 68%)}
+  #fileDrop[hidden]{display:none}
+  .drop-card{width:min(520px,90vw);padding:44px 34px;border:1px dashed rgba(255,106,0,.62);border-radius:22px;background:rgba(9,9,9,.84);box-shadow:0 24px 100px rgba(0,0,0,.5);text-align:center;transition:transform .16s ease,border-color .16s ease,background .16s ease}
+  #fileDrop.dragging .drop-card{transform:scale(1.025);border-color:#ff9b52;background:rgba(35,18,7,.92)}
+  .drop-kicker{display:block;margin-bottom:12px;color:var(--orange);font-size:10px;font-weight:900;letter-spacing:.2em}
+  .drop-card strong{display:block;color:#fff;font-size:clamp(22px,4vw,42px);line-height:1.03;letter-spacing:-.035em}
+  .drop-card p{margin:13px auto 22px;color:rgba(255,255,255,.52);font-size:12px;line-height:1.5}
+  #stageFileButton{min-width:220px;height:48px;border:1px solid var(--orange);border-radius:11px;background:var(--orange);color:#111;font-weight:900;letter-spacing:.07em;cursor:pointer}
   #mediaLoader{
     position:absolute;inset:0;z-index:8;display:grid;place-items:center;padding:24px;pointer-events:none;
     background:radial-gradient(circle at 50% 44%,rgba(34,20,12,.78),rgba(0,0,0,.9) 58%,rgba(0,0,0,.96))
@@ -64,14 +58,15 @@
   .value{color:var(--orange);font-variant-numeric:tabular-nums}
   input[type=range]{width:100%;accent-color:var(--orange)}
   .ends{display:flex;justify-content:space-between;margin-top:2px;color:rgba(255,255,255,.42);font-size:8px;letter-spacing:.08em;text-transform:uppercase}
-  .loadrow{display:grid;grid-template-columns:1fr auto auto;gap:8px}
-  input[type=text],select{
+  .file-select-row{display:grid;grid-template-columns:1fr;gap:7px}
+  select{
     width:100%;min-width:0;height:39px;border:1px solid rgba(255,255,255,.14);
     border-radius:9px;background:rgba(255,255,255,.06);color:#fff;padding:0 11px;outline:none
   }
   select{appearance:auto}
-  #load,#fileButton,#audioToggle,#headTrackToggle,#tapBeat{height:39px;border:1px solid rgba(255,106,0,.62);border-radius:9px;background:rgba(255,106,0,.14);color:#ffd0ae;font-weight:800;cursor:pointer;padding:0 14px}
-  #fileButton{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff}
+  #fileButton,#audioToggle,#headTrackToggle{height:39px;border:1px solid rgba(255,106,0,.62);border-radius:9px;background:rgba(255,106,0,.14);color:#ffd0ae;font-weight:800;cursor:pointer;padding:0 14px}
+  #fileButton{width:100%;background:var(--orange);border-color:var(--orange);color:#111;letter-spacing:.06em}
+  #fileName{overflow:hidden;color:rgba(255,255,255,.5);font-size:9px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
   #audioToggle{width:100%;letter-spacing:.06em}
   #audioToggle.live{background:var(--orange);color:#111;border-color:var(--orange)}
   #audioToggle.error{border-color:#ff4d4d;background:rgba(255,77,77,.12);color:#ffc6c6}
@@ -85,9 +80,16 @@
 </head>
 <body>
 <div id="stage">
-  <video id="video" autoplay muted loop playsinline controls crossorigin="anonymous"></video>
-  <div id="youtubeHost" aria-label="YouTube player"></div>
+  <video id="video" autoplay muted loop playsinline controls></video>
   <canvas id="fx"></canvas>
+  <div id="fileDrop">
+    <div class="drop-card">
+      <span class="drop-kicker">LOCAL VIDEO INPUT</span>
+      <strong>ПЕРЕТАЩИ ВИДЕО СЮДА</strong>
+      <p>Файл останется в браузере и никуда не отправляется.</p>
+      <button id="stageFileButton" type="button">ВЫБРАТЬ ВИДЕО</button>
+    </div>
+  </div>
   <div id="mediaLoader" hidden role="status" aria-live="polite">
     <div class="loader-card">
       <div class="loader-ring" aria-hidden="true"></div>
@@ -103,13 +105,12 @@
 
 <div id="panel">
   <div class="row">
-    <div class="loadrow">
-      <input id="videoUrl" type="text" aria-label="Ссылка на видео" value="https://www.youtube.com/watch?v=mDeuCvbl3Oo">
-      <button id="fileButton" type="button">FILE</button>
-      <button id="load" type="button">LOAD</button>
-      <input id="videoFile" type="file" accept="video/*,audio/*" hidden>
+    <div class="file-select-row">
+      <button id="fileButton" type="button">ВЫБРАТЬ ВИДЕОФАЙЛ</button>
+      <span id="fileName">Видео не выбрано</span>
+      <input id="videoFile" type="file" accept="video/*,.mp4,.webm,.mov,.m4v,.ogv" hidden>
     </div>
-    <div class="hint">Прямой MP4 сначала загружается в память браузера с индикатором прогресса. FILE уже находится на клиенте. YouTube работает только через iframe: превратить его ссылку в локальный видеофайл браузер не может.</div>
+    <div class="hint">Файл открывается локально через Blob и не загружается на сервер. Можно также перетащить видео прямо на сцену.</div>
   </div>
 
   <div class="row">
@@ -161,7 +162,7 @@
   <div class="row">
     <div class="label"><span>Аудио-пики</span><span class="value" id="audioStatus">Нажми Start</span></div>
     <button id="audioToggle" type="button">START AUDIO FX</button>
-    <div class="hint">Браузер разрешает анализ звука только после клика. У обычной ссылки на видео сервер должен разрешать CORS; локальный FILE работает без этого ограничения.</div>
+    <div class="hint">Браузер разрешает анализ звука только после клика. Локальный файл работает без CORS-ограничений.</div>
   </div>
 
   <div class="row">
@@ -173,15 +174,7 @@
   <div class="row">
     <div class="label"><span>Трекинг головы</span><span class="value" id="headTrackStatus">OFF</span></div>
     <button id="headTrackToggle" type="button">TRACK HEAD</button>
-    <div class="hint">Работает в реальном времени для FILE и прямого видео с CORS. YouTube-iframe не отдаёт кадры странице, поэтому там трекинг недоступен.</div>
-  </div>
-
-  <div class="row" id="youtubeBeatRow" hidden>
-    <div class="label"><span>YouTube beat clock</span><span class="value" id="bpmValue">120 BPM</span></div>
-    <input id="bpm" type="range" min="60" max="190" value="120">
-    <div class="ends"><span>60</span><span>190</span></div>
-    <button id="tapBeat" type="button">SYNC PEAK NOW</button>
-    <div class="hint">YouTube держит звук внутри защищённого iframe, поэтому здесь используется синхронный BPM-гейт. Настрой BPM на слух; для настоящих пиков выбери видео через FILE.</div>
+    <div class="hint">Работает в реальном времени для выбранного локального видео.</div>
   </div>
 </div>
 
@@ -208,10 +201,8 @@
   const headTrackToggle = document.getElementById('headTrackToggle');
   const headTrackStatus = document.getElementById('headTrackStatus');
   const videoFile = document.getElementById('videoFile');
-  const youtubeBeatRow = document.getElementById('youtubeBeatRow');
-  const bpmEl = document.getElementById('bpm');
-  const bpmValue = document.getElementById('bpmValue');
-  const tapBeat = document.getElementById('tapBeat');
+  const fileDrop = document.getElementById('fileDrop');
+  const fileName = document.getElementById('fileName');
   const panel = document.getElementById('panel');
   const menuButton = document.getElementById('menuButton');
   const mediaLoader = document.getElementById('mediaLoader');
@@ -289,14 +280,7 @@
   let lastStatusAt = 0;
   let noSignalSince = 0;
   let currentObjectUrl = '';
-  let activeLoadController = null;
   let activeLoadToken = 0;
-  let isYouTubeMode = false;
-  let youtubePlayer = null;
-  let youtubeApiPromise = null;
-  let youtubeReadyPromise = null;
-  let youtubeBeatOffset = 0;
-  let youtubeError = 0;
   let faceDetector = null;
   let headTracking = false;
   let headTrackingLoading = false;
@@ -360,240 +344,11 @@
 
   function cancelPendingVideoLoad() {
     activeLoadToken += 1;
-    if (activeLoadController) activeLoadController.abort();
-    activeLoadController = null;
   }
   const wrap = (x, a, b) => {
     const span = b - a;
     return ((x - a) % span + span) % span + a;
   };
-
-  function extractYouTubeId(input) {
-    const value = String(input || '').trim();
-    if (/^[\w-]{11}$/.test(value)) return value;
-    try {
-      const normalized = /^(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(value) ? `https://${value}` : value;
-      const url = new URL(normalized);
-      const host = url.hostname.replace(/^www\./, '').replace(/^m\./, '');
-      let id = '';
-      if (host === 'youtu.be') id = url.pathname.split('/').filter(Boolean)[0] || '';
-      if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
-        if (url.pathname === '/watch') id = url.searchParams.get('v') || '';
-        else {
-          const parts = url.pathname.split('/').filter(Boolean);
-          if (['embed', 'shorts', 'live', 'v'].includes(parts[0])) id = parts[1] || '';
-        }
-      }
-      return /^[\w-]{11}$/.test(id) ? id : '';
-    } catch (_) {
-      return '';
-    }
-  }
-
-  function youtubeTime() {
-    if (!youtubePlayer || typeof youtubePlayer.getCurrentTime !== 'function') return 0;
-    try { return Number(youtubePlayer.getCurrentTime()) || 0; }
-    catch (_) { return 0; }
-  }
-
-  function loadYouTubeApi() {
-    if (window.YT && typeof window.YT.Player === 'function') return Promise.resolve(window.YT);
-    if (youtubeApiPromise) return youtubeApiPromise;
-    youtubeApiPromise = new Promise((resolve, reject) => {
-      const previousReady = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => {
-        if (typeof previousReady === 'function') previousReady();
-        resolve(window.YT);
-      };
-      const script = document.createElement('script');
-      script.src = 'https://www.youtube.com/iframe_api';
-      script.async = true;
-      script.onerror = () => reject(new Error('YouTube API не загрузился'));
-      document.head.appendChild(script);
-      setTimeout(() => reject(new Error('YouTube API: timeout')), 15000);
-    });
-    return youtubeApiPromise;
-  }
-
-  function resetYouTubeEmbed() {
-    try {
-      if (youtubePlayer && typeof youtubePlayer.destroy === 'function') youtubePlayer.destroy();
-    } catch (_) {}
-    const previous = document.getElementById('youtubeHost');
-    const slot = document.createElement('div');
-    slot.id = 'youtubeHost';
-    slot.setAttribute('aria-label', 'YouTube player');
-    if (previous) previous.replaceWith(slot);
-    else stage.insertBefore(slot, canvas);
-    youtubePlayer = null;
-    youtubeReadyPromise = null;
-  }
-
-  function showYouTubeNotice(videoId, reason = 'referer') {
-    resetYouTubeEmbed();
-    const slot = document.getElementById('youtubeHost');
-    slot.className = 'youtube-notice';
-
-    const card = document.createElement('div');
-    card.className = 'notice-card';
-    const title = document.createElement('strong');
-    title.textContent = reason === 'file'
-      ? 'YOUTUBE НЕ РАБОТАЕТ ИЗ FILE://'
-      : reason === 'owner'
-        ? 'АВТОР ЗАПРЕТИЛ ВСТРАИВАНИЕ'
-        : 'YOUTUBE ЗАБЛОКИРОВАЛ EMBED';
-    const copy = document.createElement('p');
-    copy.textContent = reason === 'file'
-      ? 'Это ограничение YouTube Error 153: локальная страница не может отправить HTTP Referer. Вставь этот HTML в CodePen и открой Change View → Debug Mode.'
-      : reason === 'owner'
-        ? 'Это YouTube Error 101/150. Ролик можно смотреть только на YouTube: сервер, GitHub Pages и клиентская загрузка не могут снять запрет владельца.'
-        : 'Браузер удалил Referer. В Opera выключи Block trackers для этой страницы или открой Pen в Debug View и повтори загрузку.';
-    const link = document.createElement('a');
-    link.href = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
-    link.target = '_blank';
-    link.rel = 'noopener';
-    link.textContent = 'ОТКРЫТЬ ВИДЕО НА YOUTUBE';
-    card.append(title, copy, link);
-    slot.append(card);
-  }
-
-  async function ensureYouTubePlayer(videoId, embedDomain = 'www.youtube.com') {
-    await loadYouTubeApi();
-    if (!youtubePlayer) {
-      youtubeReadyPromise = new Promise((resolve, reject) => {
-        const pageOrigin = /^https?:\/\//.test(location.origin) ? location.origin : '';
-        let referrerUrl = '';
-        let referrerOrigin = '';
-        try {
-          const referrer = new URL(document.referrer);
-          if (/^https?:$/.test(referrer.protocol)) {
-            referrerUrl = referrer.href;
-            referrerOrigin = referrer.origin;
-          }
-        } catch (_) {}
-        const origin = pageOrigin || referrerOrigin;
-        const widgetReferrer = referrerUrl || (/^https?:$/.test(location.protocol) ? location.href : '');
-        const params = new URLSearchParams({
-          enablejsapi: '1',
-          controls: '1',
-          playsinline: '1',
-          rel: '0',
-          iv_load_policy: '3'
-        });
-        if (origin) params.set('origin', origin);
-        if (widgetReferrer) params.set('widget_referrer', widgetReferrer);
-
-        const slot = document.getElementById('youtubeHost');
-        const iframe = document.createElement('iframe');
-        iframe.id = 'youtubeHost';
-        iframe.title = 'YouTube video player';
-        iframe.referrerPolicy = 'strict-origin';
-        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-        iframe.allowFullscreen = true;
-        iframe.src = `https://${embedDomain}/embed/${videoId}?${params}`;
-        slot.replaceWith(iframe);
-
-        youtubePlayer = new YT.Player(iframe, {
-          events: {
-            onReady: event => {
-              resolve(event.target);
-              event.target.playVideo();
-            },
-            onStateChange: event => {
-              if (event.data === YT.PlayerState.ENDED) {
-                event.target.seekTo(0, true);
-                event.target.playVideo();
-              }
-            },
-            onAutoplayBlocked: () => { audioStatus.textContent = 'Нажми Play в YouTube'; },
-            onError: event => {
-              const messages = {
-                2: 'Неверный YouTube ID',
-                5: 'Видео не воспроизводится в HTML5',
-                100: 'Видео удалено или приватное',
-                101: 'Автор запретил встраивание',
-                150: 'Автор запретил встраивание',
-                153: 'YouTube не видит Referer — открой Pen в Debug View'
-              };
-              youtubeError = event.data;
-              audioStatus.textContent = messages[event.data] || `YouTube error ${event.data}`;
-              audioToggle.classList.add('error');
-              audioToggle.classList.remove('live');
-              audioToggle.textContent = event.data === 153 ? 'REFERER BLOCKED BY BROWSER' : 'YOUTUBE PLAYER ERROR';
-              hideMediaLoader();
-              if (event.data === 101 || event.data === 150) {
-                setTimeout(() => showYouTubeNotice(videoId, 'owner'), 0);
-              }
-              const playerError = new Error(audioStatus.textContent);
-              playerError.code = event.data;
-              reject(playerError);
-            }
-          }
-        });
-      });
-      await youtubeReadyPromise;
-    } else {
-      await youtubeReadyPromise;
-      youtubePlayer.loadVideoById(videoId);
-    }
-  }
-
-  async function loadYouTubeVideo(videoId) {
-    cancelPendingVideoLoad();
-    showMediaLoader('ПОДКЛЮЧАЮ YOUTUBE', null, 'YouTube остаётся защищённым iframe и не скачивается в Blob');
-    video.pause();
-    stopHeadTracking('YOUTUBE IFRAME', true);
-    if (youtubeError) resetYouTubeEmbed();
-    youtubeError = 0;
-    isYouTubeMode = true;
-    stage.classList.add('youtube');
-    youtubeBeatRow.hidden = false;
-    youtubeBeatOffset = 0;
-    audioReactive = true;
-    audioToggle.classList.add('live');
-    audioToggle.classList.remove('error');
-    audioToggle.textContent = 'YOUTUBE BEAT: LIVE';
-    audioStatus.textContent = 'YouTube загружается…';
-
-    if (!/^https?:$/.test(location.protocol)) {
-      youtubeError = 153;
-      audioReactive = false;
-      audioToggle.classList.remove('live');
-      audioToggle.classList.add('error');
-      audioToggle.textContent = 'YOUTUBE НУЖЕН HTTP/HTTPS';
-      audioStatus.textContent = 'LOCAL FILE → ERROR 153';
-      hideMediaLoader();
-      showYouTubeNotice(videoId, 'file');
-      return;
-    }
-
-    try {
-      await ensureYouTubePlayer(videoId);
-      audioStatus.textContent = 'BPM-гейт активен';
-      hideMediaLoader();
-    } catch (error) {
-      if (error.code === 153) {
-        resetYouTubeEmbed();
-        youtubeError = 0;
-        audioStatus.textContent = 'Повтор через privacy embed…';
-        try {
-          await ensureYouTubePlayer(videoId, 'www.youtube-nocookie.com');
-          audioToggle.classList.remove('error');
-          audioToggle.classList.add('live');
-          audioToggle.textContent = 'YOUTUBE BEAT: LIVE';
-          audioStatus.textContent = 'BPM-гейт активен';
-          hideMediaLoader();
-          return;
-        } catch (privacyError) {
-          error = privacyError;
-        }
-      }
-      audioStatus.textContent = error.message || 'Ошибка YouTube';
-      audioToggle.classList.add('error');
-      hideMediaLoader();
-      if (error.code === 153) showYouTubeNotice(videoId, 'referer');
-    }
-  }
 
   function stopHeadTracking(status = 'OFF', isError = false) {
     headTracking = false;
@@ -626,10 +381,6 @@
       stopHeadTracking();
       return;
     }
-    if (isYouTubeMode) {
-      stopHeadTracking('YOUTUBE IFRAME', true);
-      return;
-    }
     if (!video.videoWidth || !video.videoHeight) {
       stopHeadTracking('VIDEO NOT READY', true);
       return;
@@ -657,7 +408,7 @@
   }
 
   function updateHeadTracking(now) {
-    if (!headTracking || !faceDetector || isYouTubeMode || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
+    if (!headTracking || !faceDetector || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
     if (now - lastHeadDetectionAt < 82) return;
     if (video.paused && video.currentTime === lastHeadVideoTime) return;
     lastHeadDetectionAt = now;
@@ -791,53 +542,7 @@
     return total / Math.max(1, last - first) / 255;
   }
 
-  function updateYouTubeBeat(now) {
-    if (youtubeError) {
-      audioMetrics.level = 0;
-      audioMetrics.bass = 0;
-      audioMetrics.mid = 0;
-      audioMetrics.high = 0;
-      audioMetrics.peak = 0;
-      audioMetrics.gate = 0;
-      if (youtubeError === 153) audioStatus.textContent = 'Opera/Preview блокирует Referer';
-      return audioMetrics;
-    }
-    if (!audioReactive) {
-      audioMetrics.gate = 1;
-      audioMetrics.peak = 0;
-      return audioMetrics;
-    }
-    const bpm = +bpmEl.value;
-    const beatSeconds = 60 / bpm;
-    const time = youtubeTime() - youtubeBeatOffset;
-    const phase = ((time % beatSeconds) + beatSeconds) % beatSeconds / beatSeconds;
-    const halfPhase = (((time + beatSeconds * .5) % beatSeconds) + beatSeconds) % beatSeconds / beatSeconds;
-    const sensitivity = +sensitivityEl.value / 100;
-    const decay = lerp(13, 6.3, clamp((sensitivity - .5) / 1.9, 0, 1));
-    const primary = Math.exp(-phase * decay);
-    const secondary = Math.exp(-halfPhase * (decay + 2)) * .38;
-    const pulse = clamp(Math.max(primary, secondary), 0, 1);
-    let playing = true;
-    try { playing = youtubePlayer.getPlayerState() === YT.PlayerState.PLAYING; }
-    catch (_) {}
-
-    audioMetrics.level = pulse * .72;
-    audioMetrics.bass = primary;
-    audioMetrics.mid = pulse * .76;
-    audioMetrics.high = secondary;
-    audioMetrics.flux = 0;
-    audioMetrics.peak = playing ? primary : 0;
-    audioMetrics.gate = playing ? pulse : 0;
-
-    if (now - lastStatusAt > 180) {
-      lastStatusAt = now;
-      audioStatus.textContent = playing ? `${bpm} BPM${primary > .62 ? ' • PEAK' : ''}` : 'YouTube на паузе';
-    }
-    return audioMetrics;
-  }
-
   function updateAudio(now) {
-    if (isYouTubeMode) return updateYouTubeBeat(now);
     if (!audioReactive || !analyser || audioContext.state !== 'running') {
       audioMetrics.gate = 1;
       audioMetrics.peak = 0;
@@ -904,19 +609,6 @@
   }
 
   async function setAudioReactive(enabled) {
-    if (isYouTubeMode) {
-      if (youtubeError) {
-        audioStatus.textContent = youtubeError === 153 ? 'Разреши Referer и перезагрузи Pen' : `YouTube error ${youtubeError}`;
-        return;
-      }
-      audioReactive = enabled;
-      audioToggle.classList.toggle('live', enabled);
-      audioToggle.classList.remove('error');
-      audioToggle.textContent = enabled ? 'YOUTUBE BEAT: LIVE' : 'START YOUTUBE BEAT';
-      audioStatus.textContent = enabled ? 'BPM-гейт активен' : 'Отключено';
-      if (enabled) youtubeBeatOffset = youtubeTime();
-      return;
-    }
     if (!enabled) {
       audioReactive = false;
       audioToggle.classList.remove('live', 'error');
@@ -1110,7 +802,6 @@
 
   function effectTime(now) {
     const speed = +speedEl.value / 100;
-    if (isYouTubeMode) return youtubeTime() * speed;
     if (Number.isFinite(video.currentTime) && video.readyState >= 1) return video.currentTime * speed;
     return (now - fallbackStartedAt) * .001 * speed;
   }
@@ -1802,13 +1493,6 @@
   sensitivityEl.addEventListener('input', () => {
     sensitivityValue.textContent = (+sensitivityEl.value / 100).toFixed(2) + '×';
   });
-  bpmEl.addEventListener('input', () => {
-    bpmValue.textContent = bpmEl.value + ' BPM';
-  });
-  tapBeat.addEventListener('click', () => {
-    youtubeBeatOffset = youtubeTime();
-    audioStatus.textContent = 'Пик синхронизирован';
-  });
   modeEl.addEventListener('change', () => {
     modeValue.textContent = modeEl.options[modeEl.selectedIndex].text;
   });
@@ -1818,20 +1502,14 @@
     menuButton.textContent = panel.classList.contains('closed') ? '☰' : '×';
   });
 
-  async function loadVideoSource(source, isLocal = false) {
-    if (youtubePlayer && typeof youtubePlayer.pauseVideo === 'function') youtubePlayer.pauseVideo();
+  async function loadVideoSource(source) {
     stopHeadTracking();
-    isYouTubeMode = false;
-    stage.classList.remove('youtube');
-    youtubeBeatRow.hidden = true;
-    youtubeError = 0;
     audioReactive = false;
     audioToggle.classList.remove('live', 'error');
     audioToggle.textContent = 'START AUDIO FX';
     audioStatus.textContent = 'Нажми Start';
     video.pause();
-    if (isLocal) video.removeAttribute('crossorigin');
-    else video.crossOrigin = 'anonymous';
+    video.removeAttribute('crossorigin');
     const ready = new Promise((resolve, reject) => {
       const timeout = setTimeout(() => finish(new Error('Видео слишком долго подготавливается')), 30000);
       const finish = error => {
@@ -1854,81 +1532,6 @@
     video.play().catch(() => {});
   }
 
-  async function preloadRemoteVideo(url) {
-    cancelPendingVideoLoad();
-    const token = activeLoadToken;
-    const controller = new AbortController();
-    activeLoadController = controller;
-    showMediaLoader('ЗАГРУЖАЮ В БРАУЗЕР', 0, 'Подключаюсь к видео…');
-
-    try {
-      const response = await fetch(url, {
-        mode: 'cors',
-        credentials: 'omit',
-        signal: controller.signal
-      });
-      if (!response.ok) throw new Error(`Сервер видео ответил ${response.status}`);
-
-      const total = Number(response.headers.get('content-length')) || 0;
-      const type = response.headers.get('content-type') || 'video/mp4';
-      let blob;
-
-      if (!response.body || typeof response.body.getReader !== 'function') {
-        showMediaLoader('ЗАГРУЖАЮ В БРАУЗЕР', null, 'Размер файла сервер не сообщил');
-        blob = await response.blob();
-      } else {
-        const reader = response.body.getReader();
-        const chunks = [];
-        let received = 0;
-
-        while (true) {
-          const {done, value} = await reader.read();
-          if (done) break;
-          chunks.push(value);
-          received += value.byteLength;
-          const detail = total
-            ? `${formatBytes(received)} / ${formatBytes(total)}`
-            : `${formatBytes(received)} загружено`;
-          showMediaLoader('ЗАГРУЖАЮ В БРАУЗЕР', total ? received / total * 100 : null, detail);
-        }
-        blob = new Blob(chunks, {type});
-      }
-
-      if (token !== activeLoadToken) return;
-      if (!blob.size) throw new Error('Сервер вернул пустой файл');
-
-      const nextObjectUrl = URL.createObjectURL(blob);
-      const previousObjectUrl = currentObjectUrl;
-      showMediaLoader('ГОТОВЛЮ ВИДЕО', 100, `${formatBytes(blob.size)} находится в памяти браузера`);
-      try {
-        await loadVideoSource(nextObjectUrl, true);
-      } catch (error) {
-        URL.revokeObjectURL(nextObjectUrl);
-        throw error;
-      }
-      if (token !== activeLoadToken) {
-        URL.revokeObjectURL(nextObjectUrl);
-        return;
-      }
-      currentObjectUrl = nextObjectUrl;
-      if (previousObjectUrl) URL.revokeObjectURL(previousObjectUrl);
-      hideMediaLoader();
-    } catch (error) {
-      if (error.name === 'AbortError' || token !== activeLoadToken) return;
-      const corsMessage = error instanceof TypeError
-        ? 'Сервер запретил CORS. Скачай ролик и выбери его через FILE.'
-        : error.message;
-      showMediaLoadError(corsMessage || 'Неизвестная ошибка загрузки');
-      audioStatus.textContent = 'Видео не загружено';
-      audioToggle.classList.add('error');
-      setTimeout(() => {
-        if (token === activeLoadToken) hideMediaLoader();
-      }, 4200);
-    } finally {
-      if (token === activeLoadToken) activeLoadController = null;
-    }
-  }
-
   async function loadLocalFile(file) {
     cancelPendingVideoLoad();
     const token = activeLoadToken;
@@ -1936,17 +1539,22 @@
     const previousObjectUrl = currentObjectUrl;
     showMediaLoader('ГОТОВЛЮ ЛОКАЛЬНЫЙ ФАЙЛ', null, `${file.name} · ${formatBytes(file.size)}`);
     try {
-      await loadVideoSource(nextObjectUrl, true);
+      await loadVideoSource(nextObjectUrl);
       if (token !== activeLoadToken) {
         URL.revokeObjectURL(nextObjectUrl);
         return;
       }
       currentObjectUrl = nextObjectUrl;
       if (previousObjectUrl) URL.revokeObjectURL(previousObjectUrl);
+      fileName.textContent = `${file.name} · ${formatBytes(file.size)}`;
+      fileName.title = file.name;
+      fileDrop.hidden = true;
       hideMediaLoader();
     } catch (error) {
       URL.revokeObjectURL(nextObjectUrl);
       if (token !== activeLoadToken) return;
+      fileName.textContent = 'Файл не открылся';
+      fileDrop.hidden = false;
       showMediaLoadError(error.message || 'Не удалось открыть локальный файл');
       setTimeout(() => {
         if (token === activeLoadToken) hideMediaLoader();
@@ -1954,29 +1562,66 @@
     }
   }
 
-  document.getElementById('load').addEventListener('click', async () => {
-    const url = document.getElementById('videoUrl').value.trim();
-    if (!url) return;
-    const youtubeId = extractYouTubeId(url);
-    if (youtubeId) {
-      await loadYouTubeVideo(youtubeId);
-      return;
-    }
-    if (/youtu(?:\.be|be\.com)/i.test(url)) {
-      audioStatus.textContent = 'Не удалось найти YouTube ID';
-      audioToggle.classList.add('error');
-      return;
-    }
-    await preloadRemoteVideo(url);
-  });
+  function isSupportedVideoFile(file) {
+    return Boolean(file && (
+      String(file.type || '').startsWith('video/') ||
+      /\.(mp4|webm|mov|m4v|ogv|ogg)$/i.test(String(file.name || ''))
+    ));
+  }
 
-  document.getElementById('fileButton').addEventListener('click', () => videoFile.click());
+  async function handleVideoFile(file) {
+    if (!isSupportedVideoFile(file)) {
+      fileName.textContent = 'Нужен видеофайл';
+      fileDrop.hidden = false;
+      showMediaLoadError('Выбери видеофайл MP4, WebM, MOV или OGV');
+      setTimeout(hideMediaLoader, 4200);
+      return;
+    }
+    fileName.textContent = `${file.name} · ${formatBytes(file.size)}`;
+    fileName.title = file.name;
+    await loadLocalFile(file);
+  }
+
+  const openFilePicker = () => videoFile.click();
+  document.getElementById('fileButton').addEventListener('click', openFilePicker);
+  document.getElementById('stageFileButton').addEventListener('click', openFilePicker);
   videoFile.addEventListener('change', async () => {
     const file = videoFile.files && videoFile.files[0];
     if (!file) return;
-    document.getElementById('videoUrl').value = file.name;
-    await loadLocalFile(file);
+    await handleVideoFile(file);
     videoFile.value = '';
+  });
+
+  let dragDepth = 0;
+  const stopFileNavigation = event => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  stage.addEventListener('dragenter', event => {
+    stopFileNavigation(event);
+    dragDepth += 1;
+    fileDrop.hidden = false;
+    fileDrop.classList.add('dragging');
+  });
+  stage.addEventListener('dragover', event => {
+    stopFileNavigation(event);
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  });
+  stage.addEventListener('dragleave', event => {
+    stopFileNavigation(event);
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) {
+      fileDrop.classList.remove('dragging');
+      if (video.readyState >= 2) fileDrop.hidden = true;
+    }
+  });
+  stage.addEventListener('drop', async event => {
+    stopFileNavigation(event);
+    dragDepth = 0;
+    fileDrop.classList.remove('dragging');
+    const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+    if (file) await handleVideoFile(file);
+    else if (video.readyState >= 2) fileDrop.hidden = true;
   });
 
   audioToggle.addEventListener('click', () => setAudioReactive(!audioReactive));
@@ -1989,10 +1634,6 @@
   window.addEventListener('resize', resize);
   resize();
   requestAnimationFrame(render);
-  const defaultVideoUrl = document.getElementById('videoUrl').value.trim();
-  const defaultYouTubeId = extractYouTubeId(defaultVideoUrl);
-  if (defaultYouTubeId) loadYouTubeVideo(defaultYouTubeId);
-  else if (defaultVideoUrl) preloadRemoteVideo(defaultVideoUrl);
 })();
 </script>
 </body>
