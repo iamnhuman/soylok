@@ -137,7 +137,6 @@
       <option value="plus-discs">Pluses + discs</option>
       <option value="dots">Dots / sparks</option>
       <option value="pluses">Plus field</option>
-      <option value="arcs">Tracking arcs</option>
     </select>
     <div class="hint">Auto sequence циклически меняет все типы эффектов и синхронизирован со временем видео.</div>
   </div>
@@ -231,7 +230,7 @@
   const WHITE = '#ffffff';
   const TAU = Math.PI * 2;
   const EFFECT_SEQUENCE = [
-    'titleCard', 'plusDiscs', 'tracking', 'arcs', 'checkerFloor', 'dashRain',
+    'titleCard', 'plusDiscs', 'tracking', 'checkerFloor', 'dashRain',
     'rectangles', 'weatherHud', 'doodles', 'geometry', 'textCollage', 'credits',
     'signature', 'dots', 'pluses', 'endCard'
   ];
@@ -283,7 +282,6 @@
   let pluses = [];
   let dots = [];
   let discs = [];
-  let arcs = [];
   let roundedRects = [];
   let groups = [];
   let audioContext = null;
@@ -947,7 +945,6 @@
     pluses = [];
     dots = [];
     discs = [];
-    arcs = [];
     roundedRects = [];
     groups = [];
 
@@ -1034,22 +1031,6 @@
       });
     }
 
-    const arcCount = clamp(Math.round(count / 18), 6, 16);
-    for (let i = 0; i < arcCount; i++) {
-      arcs.push({
-        x: rnd(.02, .98),
-        y: rnd(.08, .92),
-        radius: rnd(25, 60) * scale,
-        width: rnd(2.5, 5.5) * scale,
-        start: rnd(0, TAU),
-        sweep: rnd(.8, 2.65),
-        direction: random() < .5 ? -1 : 1,
-        vx: rnd(-.024, .024),
-        vy: rnd(-.018, .018),
-        phase: rnd(0, TAU),
-        alpha: rnd(.45, .9)
-      });
-    }
   }
 
   function resize() {
@@ -1090,8 +1071,7 @@
         'end-card': 'endCard',
         'plus-discs': 'plusDiscs',
         dots: 'dots',
-        pluses: 'pluses',
-        arcs: 'arcs'
+        pluses: 'pluses'
       };
       if (modeKey[selected]) weights[modeKey[selected]] = 1;
       return weights;
@@ -1738,26 +1718,6 @@
     }
   }
 
-  function drawArcs(t, opacity, chaos, reactive = audioMetrics) {
-    const pad = Math.max(W, H) * .08;
-    for (const a of arcs) {
-      const disorder = Math.pow(chaos, 1.25);
-      const x = wrap(a.x * W + a.vx * W * t * disorder + Math.sin(t * (.2 + chaos) + a.phase) * 18 * disorder, -pad, W + pad);
-      const y = wrap(a.y * H + a.vy * H * t * disorder + Math.cos(t * (.18 + chaos * .8) + a.phase) * 16 * disorder, -pad, H + pad);
-      const rotation = a.start + a.direction * t * .28 * chaos;
-      const radius = a.radius * (1 + Math.sin(t * (.34 + chaos * .7) + a.phase) * .09 * chaos + reactive.bass * .12 + reactive.peak * .18);
-      ctx.save();
-      ctx.globalAlpha = a.alpha * opacity;
-      ctx.strokeStyle = ORANGE;
-      ctx.lineWidth = a.width * (1 + reactive.mid * .32 + reactive.peak * .32);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.arc(x, y, radius, rotation, rotation + a.sweep * a.direction, a.direction < 0);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-
   function render(now) {
     const t = effectTime(now);
     const weights = modeWeights(t);
@@ -1789,7 +1749,6 @@
     }
     if (weights.dots * sceneGate > .001) drawDotField(t, weights.dots * sceneGate, chaos, reactive);
     if (weights.pluses * sceneGate > .001) drawPlusField(t + 2.1, weights.pluses * sceneGate, chaos, .62, reactive);
-    if (weights.arcs * sceneGate > .001) drawArcs(t, weights.arcs * sceneGate, chaos, reactive);
     if (weights.endCard * sceneGate > .001) drawEndCard(t, weights.endCard * sceneGate, reactive);
     drawTrackedFeatures(reactive);
     drawCompositeFrame();
