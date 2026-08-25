@@ -1,0 +1,1174 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Clip-style Orange Vector Overlay</title>
+<style>
+  :root{color-scheme:dark;--orange:#ff6a00}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;font-family:Inter,system-ui,-apple-system,sans-serif}
+  #stage{position:fixed;inset:0;overflow:hidden;background:#090909}
+  #video,#youtubeHost{position:absolute;inset:0;width:100%;height:100%;background:#111}
+  #video{object-fit:cover}
+  #youtubeHost{display:none;background:#000}
+  #youtubeHost iframe{display:block;width:100%;height:100%;border:0}
+  #youtubeHost.youtube-notice{
+    display:none;place-items:center;padding:24px;color:#fff;text-align:center;
+    background:radial-gradient(circle at 50% 42%,#252525 0,#111 48%,#070707 100%)
+  }
+  #youtubeHost.youtube-notice .notice-card{width:min(560px,90vw);padding:28px;border:1px solid rgba(255,255,255,.15);border-radius:18px;background:rgba(10,10,10,.78)}
+  #youtubeHost.youtube-notice strong{display:block;margin-bottom:10px;color:#ff6a00;font-size:clamp(19px,2.2vw,30px);letter-spacing:.04em}
+  #youtubeHost.youtube-notice p{margin:0;color:rgba(255,255,255,.7);font-size:14px;line-height:1.55}
+  #youtubeHost.youtube-notice a{display:inline-flex;margin-top:18px;padding:11px 17px;border:1px solid #ff6a00;border-radius:10px;color:#ffd0ae;text-decoration:none;font-weight:800}
+  #stage.youtube #video{display:none}
+  #stage.youtube #youtubeHost{display:block}
+  #stage.youtube #youtubeHost.youtube-notice{display:grid}
+  #fx{position:absolute;inset:0;z-index:2;width:100%;height:100%;pointer-events:none}
+
+  #menuButton{
+    position:fixed;right:18px;top:18px;z-index:20;width:46px;height:46px;
+    border:1px solid rgba(255,255,255,.16);border-radius:12px;
+    background:rgba(10,10,12,.72);color:#fff;backdrop-filter:blur(14px);
+    cursor:pointer;font-size:21px;line-height:1
+  }
+  #panel{
+    position:fixed;right:18px;top:76px;z-index:19;width:min(400px,calc(100vw - 36px));
+    max-height:calc(100vh - 94px);overflow-y:auto;
+    padding:15px;border:1px solid rgba(255,255,255,.14);border-radius:14px;
+    background:rgba(10,10,12,.82);backdrop-filter:blur(18px);
+    box-shadow:0 18px 70px rgba(0,0,0,.32);transform-origin:top right;
+    transition:opacity .18s ease,transform .18s ease
+  }
+  #panel.closed{opacity:0;pointer-events:none;transform:scale(.96) translateY(-8px)}
+  .row{margin-bottom:14px}.row:last-child{margin-bottom:0}
+  .label{display:flex;justify-content:space-between;gap:14px;margin-bottom:6px;color:#fff;font-size:10px;font-weight:850;letter-spacing:.11em;text-transform:uppercase}
+  .value{color:var(--orange);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--orange)}
+  .ends{display:flex;justify-content:space-between;margin-top:2px;color:rgba(255,255,255,.42);font-size:8px;letter-spacing:.08em;text-transform:uppercase}
+  .loadrow{display:grid;grid-template-columns:1fr auto auto;gap:8px}
+  input[type=text],select{
+    width:100%;min-width:0;height:39px;border:1px solid rgba(255,255,255,.14);
+    border-radius:9px;background:rgba(255,255,255,.06);color:#fff;padding:0 11px;outline:none
+  }
+  select{appearance:auto}
+  #load,#fileButton,#audioToggle,#tapBeat{height:39px;border:1px solid rgba(255,106,0,.62);border-radius:9px;background:rgba(255,106,0,.14);color:#ffd0ae;font-weight:800;cursor:pointer;padding:0 14px}
+  #fileButton{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff}
+  #audioToggle{width:100%;letter-spacing:.06em}
+  #audioToggle.live{background:var(--orange);color:#111;border-color:var(--orange)}
+  #audioToggle.error{border-color:#ff4d4d;background:rgba(255,77,77,.12);color:#ffc6c6}
+  .sep{height:1px;background:rgba(255,255,255,.09);margin:13px 0}
+  .hint{margin-top:8px;color:rgba(255,255,255,.45);font-size:9px;line-height:1.45}
+  @media (max-width:560px){#menuButton{right:12px;top:12px}#panel{right:12px;top:66px;width:calc(100vw - 24px)}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="video" autoplay muted loop playsinline controls crossorigin="anonymous"
+    src="https://videos.pexels.com/video-files/3130284/3130284-hd_1920_1080_30fps.mp4"></video>
+  <div id="youtubeHost" aria-label="YouTube player"></div>
+  <canvas id="fx"></canvas>
+</div>
+
+<button id="menuButton" type="button" aria-label="Показать или скрыть настройки">×</button>
+
+<div id="panel">
+  <div class="row">
+    <div class="loadrow">
+      <input id="videoUrl" type="text" aria-label="Ссылка на видео" value="https://videos.pexels.com/video-files/3130284/3130284-hd_1920_1080_30fps.mp4">
+      <button id="fileButton" type="button">FILE</button>
+      <button id="load" type="button">LOAD</button>
+      <input id="videoFile" type="file" accept="video/*,audio/*" hidden>
+    </div>
+    <div class="hint">Можно вставить прямой MP4, ссылку `youtube.com/watch`, `youtu.be`, Shorts или Embed. YouTube требует страницу с HTTP/HTTPS: из локального `file://` он возвращает Error 153, поэтому для YouTube используй CodePen Debug View.</div>
+  </div>
+
+  <div class="row">
+    <div class="label"><span>Режим</span><span class="value" id="modeValue">Clip sequence</span></div>
+    <select id="mode">
+      <option value="sequence">Clip sequence</option>
+      <option value="rectangles">Rounded rectangles</option>
+      <option value="text-collage">Text collage</option>
+      <option value="plus-discs">Pluses + discs</option>
+      <option value="dots">Dots / sparks</option>
+      <option value="pluses">Plus field</option>
+      <option value="arcs">Tracking arcs</option>
+    </select>
+    <div class="hint">Sequence повторяет монтажную логику референса: 36-секундный цикл синхронизирован со временем видео. Страница автономна: открывай файл напрямую или вставляй его целиком в HTML-панель CodePen.</div>
+  </div>
+
+  <div class="sep"></div>
+
+  <div class="row">
+    <div class="label"><span>Количество</span><span class="value" id="amountValue">140</span></div>
+    <input id="amount" type="range" min="24" max="320" value="140">
+    <div class="ends"><span>24</span><span>320</span></div>
+  </div>
+
+  <div class="row">
+    <div class="label"><span>Хаос</span><span class="value" id="chaosValue">34%</span></div>
+    <input id="chaos" type="range" min="0" max="100" value="34">
+    <div class="ends"><span>порядок</span><span>рандом</span></div>
+  </div>
+
+  <div class="row">
+    <div class="label"><span>Скорость эффекта</span><span class="value" id="speedValue">1.00×</span></div>
+    <input id="speed" type="range" min="20" max="250" value="100">
+    <div class="ends"><span>slow</span><span>fast</span></div>
+  </div>
+
+  <div class="sep"></div>
+
+  <div class="row">
+    <div class="label"><span>Аудио-пики</span><span class="value" id="audioStatus">Нажми Start</span></div>
+    <button id="audioToggle" type="button">START AUDIO FX</button>
+    <div class="hint">Браузер разрешает анализ звука только после клика. У обычной ссылки на видео сервер должен разрешать CORS; локальный FILE работает без этого ограничения.</div>
+  </div>
+
+  <div class="row">
+    <div class="label"><span>Чувствительность пиков</span><span class="value" id="sensitivityValue">1.35×</span></div>
+    <input id="sensitivity" type="range" min="50" max="240" value="135">
+    <div class="ends"><span>только сильные</span><span>больше пиков</span></div>
+  </div>
+
+  <div class="row" id="youtubeBeatRow" hidden>
+    <div class="label"><span>YouTube beat clock</span><span class="value" id="bpmValue">120 BPM</span></div>
+    <input id="bpm" type="range" min="60" max="190" value="120">
+    <div class="ends"><span>60</span><span>190</span></div>
+    <button id="tapBeat" type="button">SYNC PEAK NOW</button>
+    <div class="hint">YouTube держит звук внутри защищённого iframe, поэтому здесь используется синхронный BPM-гейт. Настрой BPM на слух; для настоящих пиков выбери видео через FILE.</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const canvas = document.getElementById('fx');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('stage');
+  const video = document.getElementById('video');
+  const amountEl = document.getElementById('amount');
+  const chaosEl = document.getElementById('chaos');
+  const speedEl = document.getElementById('speed');
+  const modeEl = document.getElementById('mode');
+  const amountValue = document.getElementById('amountValue');
+  const chaosValue = document.getElementById('chaosValue');
+  const speedValue = document.getElementById('speedValue');
+  const modeValue = document.getElementById('modeValue');
+  const sensitivityEl = document.getElementById('sensitivity');
+  const sensitivityValue = document.getElementById('sensitivityValue');
+  const audioToggle = document.getElementById('audioToggle');
+  const audioStatus = document.getElementById('audioStatus');
+  const videoFile = document.getElementById('videoFile');
+  const youtubeBeatRow = document.getElementById('youtubeBeatRow');
+  const bpmEl = document.getElementById('bpm');
+  const bpmValue = document.getElementById('bpmValue');
+  const tapBeat = document.getElementById('tapBeat');
+  const panel = document.getElementById('panel');
+  const menuButton = document.getElementById('menuButton');
+
+  const ORANGE = '#ff6a00';
+  const PALE_ORANGE = '#ff9b52';
+  const WHITE = '#ffffff';
+  const TAU = Math.PI * 2;
+  const SEQUENCE_SECONDS = 36;
+  const TEXT_LINES = [
+    'we will make it',
+    'motion study / frame 01',
+    'signal, memory, movement',
+    'nothing stays perfectly aligned',
+    'новая сцена начинается здесь',
+    'take 06 — camera A',
+    'please keep moving',
+    'the centre keeps shifting',
+    '01:17:24 / live frame',
+    'shape follows sound'
+  ];
+
+  let W = 1;
+  let H = 1;
+  let DPR = 1;
+  let fallbackStartedAt = performance.now();
+  let pluses = [];
+  let dots = [];
+  let discs = [];
+  let arcs = [];
+  let roundedRects = [];
+  let textFragments = [];
+  let groups = [];
+  let audioContext = null;
+  let audioSource = null;
+  let analyser = null;
+  let frequencyData = null;
+  let previousFrequencyData = null;
+  let audioReactive = false;
+  let fastEnergy = 0;
+  let averageEnergy = 0;
+  let peakEnvelope = 0;
+  let lastPeakAt = -Infinity;
+  let lastAudioAt = performance.now();
+  let lastStatusAt = 0;
+  let noSignalSince = 0;
+  let currentObjectUrl = '';
+  let isYouTubeMode = false;
+  let youtubePlayer = null;
+  let youtubeApiPromise = null;
+  let youtubeReadyPromise = null;
+  let youtubeBeatOffset = 0;
+  let youtubeError = 0;
+  const audioMetrics = {level: 0, bass: 0, mid: 0, high: 0, flux: 0, peak: 0, gate: 1};
+
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smoothstep = (a, b, x) => {
+    const t = clamp((x - a) / Math.max(.0001, b - a), 0, 1);
+    return t * t * (3 - 2 * t);
+  };
+  const wrap = (x, a, b) => {
+    const span = b - a;
+    return ((x - a) % span + span) % span + a;
+  };
+
+  function extractYouTubeId(input) {
+    const value = String(input || '').trim();
+    if (/^[\w-]{11}$/.test(value)) return value;
+    try {
+      const normalized = /^(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(value) ? `https://${value}` : value;
+      const url = new URL(normalized);
+      const host = url.hostname.replace(/^www\./, '').replace(/^m\./, '');
+      let id = '';
+      if (host === 'youtu.be') id = url.pathname.split('/').filter(Boolean)[0] || '';
+      if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+        if (url.pathname === '/watch') id = url.searchParams.get('v') || '';
+        else {
+          const parts = url.pathname.split('/').filter(Boolean);
+          if (['embed', 'shorts', 'live', 'v'].includes(parts[0])) id = parts[1] || '';
+        }
+      }
+      return /^[\w-]{11}$/.test(id) ? id : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function youtubeTime() {
+    if (!youtubePlayer || typeof youtubePlayer.getCurrentTime !== 'function') return 0;
+    try { return Number(youtubePlayer.getCurrentTime()) || 0; }
+    catch (_) { return 0; }
+  }
+
+  function loadYouTubeApi() {
+    if (window.YT && typeof window.YT.Player === 'function') return Promise.resolve(window.YT);
+    if (youtubeApiPromise) return youtubeApiPromise;
+    youtubeApiPromise = new Promise((resolve, reject) => {
+      const previousReady = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        if (typeof previousReady === 'function') previousReady();
+        resolve(window.YT);
+      };
+      const script = document.createElement('script');
+      script.src = 'https://www.youtube.com/iframe_api';
+      script.async = true;
+      script.onerror = () => reject(new Error('YouTube API не загрузился'));
+      document.head.appendChild(script);
+      setTimeout(() => reject(new Error('YouTube API: timeout')), 15000);
+    });
+    return youtubeApiPromise;
+  }
+
+  function resetYouTubeEmbed() {
+    try {
+      if (youtubePlayer && typeof youtubePlayer.destroy === 'function') youtubePlayer.destroy();
+    } catch (_) {}
+    const previous = document.getElementById('youtubeHost');
+    const slot = document.createElement('div');
+    slot.id = 'youtubeHost';
+    slot.setAttribute('aria-label', 'YouTube player');
+    if (previous) previous.replaceWith(slot);
+    else stage.insertBefore(slot, canvas);
+    youtubePlayer = null;
+    youtubeReadyPromise = null;
+  }
+
+  function showYouTubeNotice(videoId, localFile = false) {
+    resetYouTubeEmbed();
+    const slot = document.getElementById('youtubeHost');
+    slot.className = 'youtube-notice';
+
+    const card = document.createElement('div');
+    card.className = 'notice-card';
+    const title = document.createElement('strong');
+    title.textContent = localFile ? 'YOUTUBE НЕ РАБОТАЕТ ИЗ FILE://' : 'YOUTUBE ЗАБЛОКИРОВАЛ EMBED';
+    const copy = document.createElement('p');
+    copy.textContent = localFile
+      ? 'Это ограничение YouTube Error 153: локальная страница не может отправить HTTP Referer. Вставь этот HTML в CodePen и открой Change View → Debug Mode.'
+      : 'Браузер удалил Referer. В Opera выключи Block trackers для этой страницы или открой Pen в Debug View и повтори загрузку.';
+    const link = document.createElement('a');
+    link.href = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = 'ОТКРЫТЬ ВИДЕО НА YOUTUBE';
+    card.append(title, copy, link);
+    slot.append(card);
+  }
+
+  async function ensureYouTubePlayer(videoId, embedDomain = 'www.youtube.com') {
+    await loadYouTubeApi();
+    if (!youtubePlayer) {
+      youtubeReadyPromise = new Promise((resolve, reject) => {
+        const pageOrigin = /^https?:\/\//.test(location.origin) ? location.origin : '';
+        let referrerUrl = '';
+        let referrerOrigin = '';
+        try {
+          const referrer = new URL(document.referrer);
+          if (/^https?:$/.test(referrer.protocol)) {
+            referrerUrl = referrer.href;
+            referrerOrigin = referrer.origin;
+          }
+        } catch (_) {}
+        const origin = pageOrigin || referrerOrigin;
+        const widgetReferrer = referrerUrl || (/^https?:$/.test(location.protocol) ? location.href : '');
+        const params = new URLSearchParams({
+          enablejsapi: '1',
+          controls: '1',
+          playsinline: '1',
+          rel: '0',
+          iv_load_policy: '3'
+        });
+        if (origin) params.set('origin', origin);
+        if (widgetReferrer) params.set('widget_referrer', widgetReferrer);
+
+        const slot = document.getElementById('youtubeHost');
+        const iframe = document.createElement('iframe');
+        iframe.id = 'youtubeHost';
+        iframe.title = 'YouTube video player';
+        iframe.referrerPolicy = 'strict-origin';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        iframe.allowFullscreen = true;
+        iframe.src = `https://${embedDomain}/embed/${videoId}?${params}`;
+        slot.replaceWith(iframe);
+
+        youtubePlayer = new YT.Player(iframe, {
+          events: {
+            onReady: event => {
+              resolve(event.target);
+              event.target.playVideo();
+            },
+            onStateChange: event => {
+              if (event.data === YT.PlayerState.ENDED) {
+                event.target.seekTo(0, true);
+                event.target.playVideo();
+              }
+            },
+            onAutoplayBlocked: () => { audioStatus.textContent = 'Нажми Play в YouTube'; },
+            onError: event => {
+              const messages = {
+                2: 'Неверный YouTube ID',
+                5: 'Видео не воспроизводится в HTML5',
+                100: 'Видео удалено или приватное',
+                101: 'Автор запретил встраивание',
+                150: 'Автор запретил встраивание',
+                153: 'YouTube не видит Referer — открой Pen в Debug View'
+              };
+              youtubeError = event.data;
+              audioStatus.textContent = messages[event.data] || `YouTube error ${event.data}`;
+              audioToggle.classList.add('error');
+              audioToggle.classList.remove('live');
+              audioToggle.textContent = event.data === 153 ? 'REFERER BLOCKED BY BROWSER' : 'YOUTUBE PLAYER ERROR';
+              const playerError = new Error(audioStatus.textContent);
+              playerError.code = event.data;
+              reject(playerError);
+            }
+          }
+        });
+      });
+      await youtubeReadyPromise;
+    } else {
+      await youtubeReadyPromise;
+      youtubePlayer.loadVideoById(videoId);
+    }
+  }
+
+  async function loadYouTubeVideo(videoId) {
+    video.pause();
+    if (youtubeError) resetYouTubeEmbed();
+    youtubeError = 0;
+    isYouTubeMode = true;
+    stage.classList.add('youtube');
+    youtubeBeatRow.hidden = false;
+    youtubeBeatOffset = 0;
+    audioReactive = true;
+    audioToggle.classList.add('live');
+    audioToggle.classList.remove('error');
+    audioToggle.textContent = 'YOUTUBE BEAT: LIVE';
+    audioStatus.textContent = 'YouTube загружается…';
+
+    if (!/^https?:$/.test(location.protocol)) {
+      youtubeError = 153;
+      audioReactive = false;
+      audioToggle.classList.remove('live');
+      audioToggle.classList.add('error');
+      audioToggle.textContent = 'YOUTUBE НУЖЕН HTTP/HTTPS';
+      audioStatus.textContent = 'LOCAL FILE → ERROR 153';
+      showYouTubeNotice(videoId, true);
+      return;
+    }
+
+    try {
+      await ensureYouTubePlayer(videoId);
+      audioStatus.textContent = 'BPM-гейт активен';
+    } catch (error) {
+      if (error.code === 153) {
+        resetYouTubeEmbed();
+        youtubeError = 0;
+        audioStatus.textContent = 'Повтор через privacy embed…';
+        try {
+          await ensureYouTubePlayer(videoId, 'www.youtube-nocookie.com');
+          audioToggle.classList.remove('error');
+          audioToggle.classList.add('live');
+          audioToggle.textContent = 'YOUTUBE BEAT: LIVE';
+          audioStatus.textContent = 'BPM-гейт активен';
+          return;
+        } catch (privacyError) {
+          error = privacyError;
+        }
+      }
+      audioStatus.textContent = error.message || 'Ошибка YouTube';
+      audioToggle.classList.add('error');
+      if (error.code === 153) showYouTubeNotice(videoId, false);
+    }
+  }
+
+  function resetAudioDetector() {
+    fastEnergy = 0;
+    averageEnergy = 0;
+    peakEnvelope = 0;
+    lastPeakAt = -Infinity;
+    noSignalSince = 0;
+    lastAudioAt = performance.now();
+    if (previousFrequencyData) previousFrequencyData.fill(0);
+  }
+
+  async function prepareAudio() {
+    if (!audioContext) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) throw new Error('Web Audio API не поддерживается');
+      audioContext = new AudioContextClass();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = .42;
+      analyser.minDecibels = -92;
+      analyser.maxDecibels = -12;
+      audioSource = audioContext.createMediaElementSource(video);
+      audioSource.connect(analyser);
+      analyser.connect(audioContext.destination);
+      frequencyData = new Uint8Array(analyser.frequencyBinCount);
+      previousFrequencyData = new Uint8Array(analyser.frequencyBinCount);
+    }
+    if (audioContext.state !== 'running') await audioContext.resume();
+  }
+
+  function bandAverage(fromHz, toHz) {
+    if (!audioContext || !frequencyData) return 0;
+    const nyquist = audioContext.sampleRate * .5;
+    const first = clamp(Math.floor(fromHz / nyquist * frequencyData.length), 0, frequencyData.length - 1);
+    const last = clamp(Math.ceil(toHz / nyquist * frequencyData.length), first + 1, frequencyData.length);
+    let total = 0;
+    for (let i = first; i < last; i++) total += frequencyData[i];
+    return total / Math.max(1, last - first) / 255;
+  }
+
+  function updateYouTubeBeat(now) {
+    if (youtubeError) {
+      audioMetrics.level = 0;
+      audioMetrics.bass = 0;
+      audioMetrics.mid = 0;
+      audioMetrics.high = 0;
+      audioMetrics.peak = 0;
+      audioMetrics.gate = 0;
+      if (youtubeError === 153) audioStatus.textContent = 'Opera/Preview блокирует Referer';
+      return audioMetrics;
+    }
+    if (!audioReactive) {
+      audioMetrics.gate = 1;
+      audioMetrics.peak = 0;
+      return audioMetrics;
+    }
+    const bpm = +bpmEl.value;
+    const beatSeconds = 60 / bpm;
+    const time = youtubeTime() - youtubeBeatOffset;
+    const phase = ((time % beatSeconds) + beatSeconds) % beatSeconds / beatSeconds;
+    const halfPhase = (((time + beatSeconds * .5) % beatSeconds) + beatSeconds) % beatSeconds / beatSeconds;
+    const sensitivity = +sensitivityEl.value / 100;
+    const decay = lerp(13, 6.3, clamp((sensitivity - .5) / 1.9, 0, 1));
+    const primary = Math.exp(-phase * decay);
+    const secondary = Math.exp(-halfPhase * (decay + 2)) * .38;
+    const pulse = clamp(Math.max(primary, secondary), 0, 1);
+    let playing = true;
+    try { playing = youtubePlayer.getPlayerState() === YT.PlayerState.PLAYING; }
+    catch (_) {}
+
+    audioMetrics.level = pulse * .72;
+    audioMetrics.bass = primary;
+    audioMetrics.mid = pulse * .76;
+    audioMetrics.high = secondary;
+    audioMetrics.flux = 0;
+    audioMetrics.peak = playing ? primary : 0;
+    audioMetrics.gate = playing ? pulse : 0;
+
+    if (now - lastStatusAt > 180) {
+      lastStatusAt = now;
+      audioStatus.textContent = playing ? `${bpm} BPM${primary > .62 ? ' • PEAK' : ''}` : 'YouTube на паузе';
+    }
+    return audioMetrics;
+  }
+
+  function updateAudio(now) {
+    if (isYouTubeMode) return updateYouTubeBeat(now);
+    if (!audioReactive || !analyser || audioContext.state !== 'running') {
+      audioMetrics.gate = 1;
+      audioMetrics.peak = 0;
+      return audioMetrics;
+    }
+
+    const dt = clamp((now - lastAudioAt) * .001, .001, .08);
+    lastAudioAt = now;
+    analyser.getByteFrequencyData(frequencyData);
+
+    const bass = bandAverage(35, 180);
+    const mid = bandAverage(180, 2400);
+    const high = bandAverage(2400, 12000);
+    const rawEnergy = bass * .50 + mid * .34 + high * .16;
+    let flux = 0;
+    for (let i = 2; i < frequencyData.length * .55; i++) {
+      flux += Math.max(0, frequencyData[i] - previousFrequencyData[i]);
+      previousFrequencyData[i] = frequencyData[i];
+    }
+    flux /= frequencyData.length * .55 * 255;
+
+    fastEnergy = lerp(fastEnergy, rawEnergy, 1 - Math.exp(-dt * 14));
+    averageEnergy = lerp(averageEnergy, rawEnergy, 1 - Math.exp(-dt * 1.15));
+
+    const sensitivity = +sensitivityEl.value / 100;
+    const threshold = averageEnergy * (1.075 + .055 / sensitivity) + .008 / sensitivity;
+    const transient = Math.max(0, fastEnergy - threshold);
+    const peakScore = transient * 8.5 * sensitivity + flux * 5.2 * sensitivity;
+    const canTrigger = now - lastPeakAt > 115;
+    if (canTrigger && peakScore > .17 && fastEnergy > .025) {
+      peakEnvelope = clamp(.72 + peakScore * 1.4, .72, 1);
+      lastPeakAt = now;
+    } else {
+      peakEnvelope *= Math.exp(-dt * 6.1);
+    }
+
+    const softPeak = smoothstep(threshold, threshold + .055 / sensitivity, fastEnergy) * .24;
+    audioMetrics.level = fastEnergy;
+    audioMetrics.bass = bass;
+    audioMetrics.mid = mid;
+    audioMetrics.high = high;
+    audioMetrics.flux = flux;
+    audioMetrics.peak = peakEnvelope;
+    audioMetrics.gate = clamp(Math.max(peakEnvelope, softPeak), 0, 1);
+
+    if (rawEnergy < .002 && !video.paused) {
+      if (!noSignalSince) noSignalSince = now;
+    } else {
+      noSignalSince = 0;
+    }
+
+    if (now - lastStatusAt > 140) {
+      lastStatusAt = now;
+      if (noSignalSince && now - noSignalSince > 2600) {
+        audioStatus.textContent = 'Нет сигнала / CORS';
+        audioToggle.classList.add('error');
+      } else {
+        const level = Math.round(fastEnergy * 100);
+        audioStatus.textContent = peakEnvelope > .55 ? `PEAK ${level}%` : `Слушаю ${level}%`;
+        audioToggle.classList.remove('error');
+      }
+    }
+    return audioMetrics;
+  }
+
+  async function setAudioReactive(enabled) {
+    if (isYouTubeMode) {
+      if (youtubeError) {
+        audioStatus.textContent = youtubeError === 153 ? 'Разреши Referer и перезагрузи Pen' : `YouTube error ${youtubeError}`;
+        return;
+      }
+      audioReactive = enabled;
+      audioToggle.classList.toggle('live', enabled);
+      audioToggle.classList.remove('error');
+      audioToggle.textContent = enabled ? 'YOUTUBE BEAT: LIVE' : 'START YOUTUBE BEAT';
+      audioStatus.textContent = enabled ? 'BPM-гейт активен' : 'Отключено';
+      if (enabled) youtubeBeatOffset = youtubeTime();
+      return;
+    }
+    if (!enabled) {
+      audioReactive = false;
+      audioToggle.classList.remove('live', 'error');
+      audioToggle.textContent = 'START AUDIO FX';
+      audioStatus.textContent = 'Отключено';
+      return;
+    }
+    try {
+      await prepareAudio();
+      audioReactive = true;
+      video.muted = false;
+      await video.play().catch(() => {});
+      resetAudioDetector();
+      audioToggle.classList.add('live');
+      audioToggle.classList.remove('error');
+      audioToggle.textContent = 'AUDIO FX: LIVE';
+      audioStatus.textContent = 'Слушаю…';
+    } catch (error) {
+      audioReactive = false;
+      audioToggle.classList.remove('live');
+      audioToggle.classList.add('error');
+      audioToggle.textContent = 'AUDIO ERROR';
+      audioStatus.textContent = error.message || 'Ошибка аудио';
+    }
+  }
+
+  function mulberry32(seed) {
+    return () => {
+      seed |= 0;
+      seed = seed + 0x6D2B79F5 | 0;
+      let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function rebuild() {
+    const count = +amountEl.value;
+    const random = mulberry32(0x5a17c9 + count * 97 + Math.round(W) * 3 + Math.round(H));
+    const rnd = (a, b) => a + random() * (b - a);
+    const pick = list => list[Math.floor(random() * list.length)];
+    const scale = clamp(Math.min(W, H) / 820, .58, 1.55);
+
+    pluses = [];
+    dots = [];
+    discs = [];
+    arcs = [];
+    roundedRects = [];
+    textFragments = [];
+    groups = [];
+
+    for (let i = 0; i < 6; i++) {
+      groups.push({
+        x: rnd(.06, .94),
+        y: rnd(.08, .92),
+        vx: rnd(-.018, .018),
+        vy: rnd(-.014, .014),
+        phase: rnd(0, TAU),
+        wave: rnd(.018, .07)
+      });
+    }
+
+    const rectangleLayouts = [
+      [.08, .17, .43, .16,  1, .00, .42, .62, 16],
+      [.18, .38, .34, .115, 1, .27, .70, .58, 13],
+      [.55, .60, .27, .085,-1, .57, 1.00, .52, 11]
+    ];
+    roundedRects = rectangleLayouts.map(layout => {
+      const [x, y, width, height, direction, slotStart, slotEnd, alpha, radius] = layout;
+      return {
+        x, y,
+        width: width * W,
+        height: height * H,
+        direction, slotStart, slotEnd, alpha,
+        radius: radius * scale,
+        phase: rnd(0, TAU)
+      };
+    });
+
+    const textLayouts = [
+      [.70, .075, .25, 'center', 4, .42],
+      [.59, .145, .34, 'center', 4, .34],
+      [.64, .205, .30, 'right', 5, .23],
+      [.72, .235, .21, 'left', 5, .36],
+      [.22, .375, .22, 'center', 5, .38],
+      [.76, .405, .18, 'left', 6, .28],
+      [.34, .525, .17, 'right', 4, .32],
+      [.83, .535, .18, 'center', 6, .25],
+      [.54, .255, .27, 'center', 6, .22],
+      [.49, .325, .25, 'left', 5, .18]
+    ];
+    textFragments = textLayouts.map((layout, index) => {
+      const [x, y, width, align, lineCount, alpha] = layout;
+      return {
+        x, y, width, align, alpha,
+        lines: Array.from({length: lineCount}, (_, line) => TEXT_LINES[(index * 2 + line) % TEXT_LINES.length]),
+        size: rnd(10.5, 14.5) * scale,
+        lineHeight: rnd(.92, 1.05),
+        phase: rnd(0, TAU)
+      };
+    });
+
+    const plusColumns = Math.max(1, Math.ceil(Math.sqrt(count * W / Math.max(1, H))));
+    const plusRows = Math.max(1, Math.ceil(count / plusColumns));
+    for (let i = 0; i < count; i++) {
+      const group = i % groups.length;
+      pluses.push({
+        x: random(),
+        y: random(),
+        gridX: ((i % plusColumns) + .5) / plusColumns,
+        gridY: (Math.floor(i / plusColumns) + .5) / plusRows,
+        ox: rnd(-W * .21, W * .21),
+        oy: rnd(-H * .18, H * .18),
+        group,
+        size: rnd(4.5, 12.5) * scale * (random() < .12 ? rnd(1.25, 1.75) : 1),
+        alpha: rnd(.28, .92),
+        phase: rnd(0, TAU),
+        sway: rnd(1.5, 7) * scale,
+        angle: random() < .86 ? 0 : pick([-.08, .08, Math.PI / 4])
+      });
+    }
+
+    const dotCount = Math.round(count * 1.15);
+    const dotColumns = Math.max(1, Math.ceil(Math.sqrt(dotCount * W / Math.max(1, H))));
+    const dotRows = Math.max(1, Math.ceil(dotCount / dotColumns));
+    for (let i = 0; i < dotCount; i++) {
+      const group = i % groups.length;
+      dots.push({
+        x: random(),
+        y: random(),
+        gridX: ((i % dotColumns) + .5) / dotColumns,
+        gridY: (Math.floor(i / dotColumns) + .5) / dotRows,
+        ox: rnd(-W * .24, W * .24),
+        oy: rnd(-H * .20, H * .20),
+        group,
+        radius: rnd(1.15, 3.6) * scale * (random() < .08 ? rnd(1.8, 2.8) : 1),
+        alpha: rnd(.32, .95),
+        phase: rnd(0, TAU),
+        speed: rnd(.42, 1.05),
+        orange: random() < .58
+      });
+    }
+
+    const discLayout = [
+      [-.01, -.02, 23], [.05, -.055, 15], [.075, .02, 11],
+      [-.075, .025, 18], [.025, .065, 16], [.11, .075, 12]
+    ];
+    for (const [ox, oy, radius] of discLayout) {
+      discs.push({
+        ox: ox * W,
+        oy: oy * H,
+        radius: radius * scale,
+        alpha: rnd(.23, .66),
+        phase: rnd(0, TAU)
+      });
+    }
+
+    const arcCount = clamp(Math.round(count / 18), 6, 16);
+    for (let i = 0; i < arcCount; i++) {
+      arcs.push({
+        x: rnd(.02, .98),
+        y: rnd(.08, .92),
+        radius: rnd(25, 60) * scale,
+        width: rnd(2.5, 5.5) * scale,
+        start: rnd(0, TAU),
+        sweep: rnd(.8, 2.65),
+        direction: random() < .5 ? -1 : 1,
+        vx: rnd(-.024, .024),
+        vy: rnd(-.018, .018),
+        phase: rnd(0, TAU),
+        alpha: rnd(.45, .9)
+      });
+    }
+  }
+
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    W = Math.max(1, r.width);
+    H = Math.max(1, r.height);
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    rebuild();
+  }
+
+  function effectTime(now) {
+    const speed = +speedEl.value / 100;
+    if (isYouTubeMode) return youtubeTime() * speed;
+    if (Number.isFinite(video.currentTime) && video.readyState >= 1) return video.currentTime * speed;
+    return (now - fallbackStartedAt) * .001 * speed;
+  }
+
+  function modeWeights(t) {
+    const selected = modeEl.value;
+    if (selected !== 'sequence') {
+      return {
+        rectangles: selected === 'rectangles' ? 1 : 0,
+        textCollage: selected === 'text-collage' ? 1 : 0,
+        plusDiscs: selected === 'plus-discs' ? 1 : 0,
+        dots: selected === 'dots' ? 1 : 0,
+        pluses: selected === 'pluses' ? 1 : 0,
+        arcs: selected === 'arcs' ? 1 : 0
+      };
+    }
+
+    const local = ((t % SEQUENCE_SECONDS) + SEQUENCE_SECONDS) % SEQUENCE_SECONDS;
+    const envelope = (start, end, fade = .65) => {
+      const fadeIn = smoothstep(start, start + fade, local);
+      const fadeOut = 1 - smoothstep(end - fade, end, local);
+      return local >= start && local <= end ? fadeIn * fadeOut : 0;
+    };
+
+    return {
+      rectangles: envelope(0, 6, .58),
+      textCollage: envelope(5.25, 12.85, .72),
+      plusDiscs: envelope(12.05, 18.15, .62),
+      dots: envelope(17.35, 25.25, .72),
+      pluses: envelope(24.4, 30.45, .68),
+      arcs: envelope(29.65, 36, .72)
+    };
+  }
+
+  function groupPosition(index, t) {
+    const g = groups[index];
+    const pad = Math.max(W, H) * .12;
+    const x = wrap(g.x * W + g.vx * W * t + Math.sin(t * .23 + g.phase) * W * g.wave, -pad, W + pad);
+    const y = wrap(g.y * H + g.vy * H * t + Math.cos(t * .18 + g.phase) * H * g.wave, -pad, H + pad);
+    return {x, y};
+  }
+
+  function particlePosition(p, t, chaos) {
+    const disorder = Math.pow(chaos, 1.35);
+    const orderedX = p.gridX * W + Math.sin(t * .16 + p.group * .9) * W * .012;
+    const orderedY = p.gridY * H + Math.cos(t * .14 + p.group * .8) * H * .01;
+    const randomX = p.x * W + Math.sin(t * (.28 + disorder * .95) + p.phase) * ((p.sway || 2) + disorder * 26);
+    const randomY = p.y * H + Math.cos(t * (.23 + disorder * .82) + p.phase) * ((p.sway || 2) + disorder * 22);
+    const kickX = Math.sin(t * 1.7 + p.phase * 2.1) * W * .025 * disorder;
+    const kickY = Math.cos(t * 1.45 + p.phase * 1.7) * H * .022 * disorder;
+    return {
+      x: wrap(lerp(orderedX, randomX, chaos) + kickX, -24, W + 24),
+      y: wrap(lerp(orderedY, randomY, chaos) + kickY, -24, H + 24)
+    };
+  }
+
+  function roundedRectanglePath(x, y, width, height, radius) {
+    const r = clamp(radius, 0, Math.min(width, height) * .5);
+    ctx.beginPath();
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(x, y, width, height, r);
+      return;
+    }
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + width - r, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    ctx.lineTo(x + width, y + height - r);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    ctx.lineTo(x + r, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function drawRoundedRectangles(t, opacity, chaos, reactive = audioMetrics) {
+    const cycle = wrap(t, 0, 6) / 6;
+    const disorder = Math.pow(chaos, 1.5);
+    for (let i = 0; i < roundedRects.length; i++) {
+      const rectangle = roundedRects[i];
+      if (cycle < rectangle.slotStart || cycle > rectangle.slotEnd) continue;
+
+      const phase = (cycle - rectangle.slotStart) / (rectangle.slotEnd - rectangle.slotStart);
+      const targetX = rectangle.x * W + Math.sin(t * .7 + rectangle.phase) * W * .012 * disorder;
+      const targetY = rectangle.y * H + Math.cos(t * .55 + rectangle.phase) * H * .009 * disorder;
+      const startX = rectangle.direction > 0 ? -rectangle.width - W * .04 : W + W * .04;
+      const endX = rectangle.direction > 0 ? W + W * .04 : -rectangle.width - W * .04;
+      let x;
+      let localAlpha = 1;
+      if (phase < .24) {
+        const enter = smoothstep(0, .24, phase);
+        x = lerp(startX, targetX, enter);
+        localAlpha = smoothstep(0, .1, phase);
+      } else if (phase < .74) {
+        x = targetX + Math.sin((phase - .24) / .5 * Math.PI) * rectangle.direction * W * .012;
+      } else {
+        const exit = smoothstep(.74, 1, phase);
+        x = lerp(targetX, endX, exit);
+        localAlpha = 1 - smoothstep(.88, 1, phase);
+      }
+      const pulseScale = 1 + reactive.peak * .035;
+      const width = rectangle.width * pulseScale;
+      const height = rectangle.height * (1 + reactive.peak * .025);
+
+      ctx.save();
+      ctx.globalAlpha = rectangle.alpha * opacity * localAlpha;
+      ctx.fillStyle = ORANGE;
+      roundedRectanglePath(
+        x - (width - rectangle.width) * .5,
+        targetY - (height - rectangle.height) * .5,
+        width,
+        height,
+        rectangle.radius * pulseScale
+      );
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawTextCollage(t, opacity, chaos, reactive = audioMetrics) {
+    const disorder = Math.pow(chaos, 1.55);
+    const peakScale = 1 + reactive.peak * .045;
+    const visibleBlocks = clamp(Math.round(8 + amountEl.value / 160), 8, textFragments.length);
+
+    for (let blockIndex = 0; blockIndex < visibleBlocks; blockIndex++) {
+      const fragment = textFragments[blockIndex];
+      const x = fragment.x * W + Math.sin(t * .23 + fragment.phase) * W * .012 * disorder;
+      const y = fragment.y * H + Math.cos(t * .19 + fragment.phase) * H * .01 * disorder;
+      const fontSize = fragment.size * peakScale;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.globalAlpha = fragment.alpha * opacity * (.82 + reactive.peak * .18);
+      ctx.fillStyle = ORANGE;
+      ctx.font = `500 ${fontSize}px Arial, Helvetica, sans-serif`;
+      ctx.textAlign = fragment.align;
+      ctx.textBaseline = 'top';
+      for (let lineIndex = 0; lineIndex < fragment.lines.length; lineIndex++) {
+        const lineJitter = Math.sin(fragment.phase + lineIndex * 1.7) * 5 * disorder;
+        ctx.fillText(fragment.lines[lineIndex], lineJitter, lineIndex * fontSize * fragment.lineHeight, fragment.width * W);
+      }
+      ctx.restore();
+    }
+
+    const cardWidth = clamp(W * .2, 120, 280);
+    const cardHeight = H * .62;
+    const cardX = W * .34 + Math.sin(t * .16) * W * .008 * disorder;
+    const cardY = H * .25 + Math.cos(t * .14) * H * .006 * disorder;
+    ctx.save();
+    ctx.globalAlpha = opacity * (.34 + reactive.peak * .07);
+    ctx.fillStyle = WHITE;
+    roundedRectanglePath(cardX, cardY, cardWidth, cardHeight, clamp(W * .012, 10, 18));
+    ctx.fill();
+    ctx.restore();
+
+    const crossX = W * .536 + Math.sin(t * .28) * 7 * disorder;
+    const crossY = H * .33 + Math.cos(t * .25) * 5 * disorder;
+    const verticalWidth = clamp(W * .038, 24, 52) * (1 + reactive.peak * .05);
+    const verticalHeight = H * .15 * (1 + reactive.peak * .05);
+    const horizontalWidth = clamp(W * .075, 58, 104) * (1 + reactive.peak * .06);
+    const horizontalHeight = clamp(H * .052, 28, 56);
+    ctx.save();
+    ctx.globalAlpha = opacity * (.7 + reactive.peak * .16);
+    ctx.fillStyle = ORANGE;
+    roundedRectanglePath(crossX, crossY, verticalWidth, verticalHeight, 2);
+    ctx.fill();
+    roundedRectanglePath(crossX, crossY + verticalHeight * .43, horizontalWidth, horizontalHeight, 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPlus(x, y, size, angle, alpha) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = ORANGE;
+    ctx.lineWidth = clamp(size * .12, 1, 2.15);
+    ctx.lineCap = 'square';
+    const half = size * .5;
+    ctx.beginPath();
+    ctx.moveTo(-half, 0);
+    ctx.lineTo(half, 0);
+    ctx.moveTo(0, -half);
+    ctx.lineTo(0, half);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPlusField(t, opacity, chaos, density = 1, reactive = audioMetrics) {
+    const limit = Math.round(pluses.length * density);
+    for (let i = 0; i < limit; i++) {
+      const p = pluses[i];
+      const pos = particlePosition(p, t, chaos);
+      const flicker = .68 + .32 * Math.sin(t * .85 + p.phase) ** 2;
+      const chaosPulse = 1 + Math.sin(t * 1.7 + p.phase) * .2 * chaos;
+      const reactiveSize = p.size * chaosPulse * (1 + reactive.peak * .38 + reactive.high * .12);
+      const angle = p.angle * chaos + Math.sin(t * .6 + p.phase) * .12 * chaos;
+      drawPlus(pos.x, pos.y, reactiveSize, angle, p.alpha * flicker * opacity);
+    }
+  }
+
+  function drawDiscs(t, opacity, chaos, reactive = audioMetrics) {
+    const g = groupPosition(2, t * .62);
+    const freeX = W * (.52 + Math.sin(t * .12) * .04);
+    const freeY = H * (.31 + Math.cos(t * .14) * .035);
+    const anchorX = lerp(freeX, g.x, chaos * .56);
+    const anchorY = lerp(freeY, g.y, chaos * .56);
+    for (const d of discs) {
+      const pulse = 1 + Math.sin(t * .7 + d.phase) * .045 + reactive.bass * .28 + reactive.peak * .28;
+      ctx.save();
+      ctx.globalAlpha = d.alpha * opacity;
+      ctx.fillStyle = PALE_ORANGE;
+      ctx.beginPath();
+      ctx.arc(anchorX + d.ox, anchorY + d.oy, d.radius * pulse, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawDotField(t, opacity, chaos, reactive = audioMetrics) {
+    const disorder = Math.pow(chaos, 1.3);
+    const mix = chaos * .72;
+    for (const p of dots) {
+      const g = groupPosition(p.group, t * p.speed);
+      const streamX = g.x + p.ox + Math.sin(t * .75 + p.phase) * 8;
+      const streamY = g.y + p.oy + Math.cos(t * .55 + p.phase) * 7 + (t * 4 * p.speed) % 18;
+      const fieldX = lerp(p.gridX * W, p.x * W, chaos) + Math.sin(t * (.18 + disorder * .8) + p.phase) * (2 + disorder * 16);
+      const fieldY = wrap(lerp(p.gridY * H, p.y * H, chaos) - t * (1.4 + disorder * (2.8 + p.speed * 3.2)), -12, H + 12);
+      const x = wrap(lerp(fieldX, streamX, mix), -18, W + 18);
+      const y = wrap(lerp(fieldY, streamY, mix), -18, H + 18);
+      const flicker = .42 + .58 * Math.sin(t * 1.35 + p.phase) ** 2;
+      ctx.save();
+      ctx.globalAlpha = p.alpha * flicker * opacity;
+      ctx.fillStyle = p.orange ? ORANGE : WHITE;
+      ctx.beginPath();
+      ctx.arc(x, y, p.radius * (1 + reactive.high * .5 + reactive.peak * .32), 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawArcs(t, opacity, chaos, reactive = audioMetrics) {
+    const pad = Math.max(W, H) * .08;
+    for (const a of arcs) {
+      const disorder = Math.pow(chaos, 1.25);
+      const x = wrap(a.x * W + a.vx * W * t * disorder + Math.sin(t * (.2 + chaos) + a.phase) * 18 * disorder, -pad, W + pad);
+      const y = wrap(a.y * H + a.vy * H * t * disorder + Math.cos(t * (.18 + chaos * .8) + a.phase) * 16 * disorder, -pad, H + pad);
+      const rotation = a.start + a.direction * t * .28 * chaos;
+      const radius = a.radius * (1 + Math.sin(t * (.34 + chaos * .7) + a.phase) * .09 * chaos + reactive.bass * .12 + reactive.peak * .18);
+      ctx.save();
+      ctx.globalAlpha = a.alpha * opacity;
+      ctx.strokeStyle = ORANGE;
+      ctx.lineWidth = a.width * (1 + reactive.mid * .32 + reactive.peak * .32);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(x, y, radius, rotation, rotation + a.sweep * a.direction, a.direction < 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function render(now) {
+    const t = effectTime(now);
+    const weights = modeWeights(t);
+    const reactive = updateAudio(now);
+    const gate = reactive.gate;
+    const chaos = +chaosEl.value / 100;
+    ctx.clearRect(0, 0, W, H);
+
+    if (weights.rectangles * gate > .001) {
+      drawRoundedRectangles(t, weights.rectangles * gate, chaos, reactive);
+    }
+    if (weights.textCollage * gate > .001) {
+      drawTextCollage(t, weights.textCollage * gate, chaos, reactive);
+    }
+    if (weights.plusDiscs * gate > .001) {
+      drawPlusField(t, weights.plusDiscs * gate, chaos, .82, reactive);
+      drawDiscs(t, weights.plusDiscs * gate, chaos, reactive);
+    }
+    if (weights.dots * gate > .001) drawDotField(t, weights.dots * gate, chaos, reactive);
+    if (weights.pluses * gate > .001) drawPlusField(t + 2.1, weights.pluses * gate, chaos, .62, reactive);
+    if (weights.arcs * gate > .001) drawArcs(t, weights.arcs * gate, chaos, reactive);
+
+    requestAnimationFrame(render);
+  }
+
+  amountEl.addEventListener('input', () => {
+    amountValue.textContent = amountEl.value;
+    rebuild();
+  });
+  chaosEl.addEventListener('input', () => {
+    chaosValue.textContent = chaosEl.value + '%';
+  });
+  speedEl.addEventListener('input', () => {
+    speedValue.textContent = (+speedEl.value / 100).toFixed(2) + '×';
+  });
+  sensitivityEl.addEventListener('input', () => {
+    sensitivityValue.textContent = (+sensitivityEl.value / 100).toFixed(2) + '×';
+  });
+  bpmEl.addEventListener('input', () => {
+    bpmValue.textContent = bpmEl.value + ' BPM';
+  });
+  tapBeat.addEventListener('click', () => {
+    youtubeBeatOffset = youtubeTime();
+    audioStatus.textContent = 'Пик синхронизирован';
+  });
+  modeEl.addEventListener('change', () => {
+    modeValue.textContent = modeEl.options[modeEl.selectedIndex].text;
+  });
+
+  menuButton.addEventListener('click', () => {
+    panel.classList.toggle('closed');
+    menuButton.textContent = panel.classList.contains('closed') ? '☰' : '×';
+  });
+
+  function loadVideoSource(source, isLocal = false) {
+    if (youtubePlayer && typeof youtubePlayer.pauseVideo === 'function') youtubePlayer.pauseVideo();
+    isYouTubeMode = false;
+    stage.classList.remove('youtube');
+    youtubeBeatRow.hidden = true;
+    youtubeError = 0;
+    audioReactive = false;
+    audioToggle.classList.remove('live', 'error');
+    audioToggle.textContent = 'START AUDIO FX';
+    audioStatus.textContent = 'Нажми Start';
+    video.pause();
+    if (isLocal) video.removeAttribute('crossorigin');
+    else video.crossOrigin = 'anonymous';
+    video.src = source;
+    video.load();
+    resetAudioDetector();
+    video.play().catch(() => {});
+  }
+
+  document.getElementById('load').addEventListener('click', async () => {
+    const url = document.getElementById('videoUrl').value.trim();
+    if (!url) return;
+    if (currentObjectUrl) {
+      URL.revokeObjectURL(currentObjectUrl);
+      currentObjectUrl = '';
+    }
+    const youtubeId = extractYouTubeId(url);
+    if (youtubeId) {
+      await loadYouTubeVideo(youtubeId);
+      return;
+    }
+    if (/youtu(?:\.be|be\.com)/i.test(url)) {
+      audioStatus.textContent = 'Не удалось найти YouTube ID';
+      audioToggle.classList.add('error');
+      return;
+    }
+    loadVideoSource(url, false);
+  });
+
+  document.getElementById('fileButton').addEventListener('click', () => videoFile.click());
+  videoFile.addEventListener('change', () => {
+    const file = videoFile.files && videoFile.files[0];
+    if (!file) return;
+    if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+    currentObjectUrl = URL.createObjectURL(file);
+    document.getElementById('videoUrl').value = file.name;
+    loadVideoSource(currentObjectUrl, true);
+  });
+
+  audioToggle.addEventListener('click', () => setAudioReactive(!audioReactive));
+
+  document.addEventListener('keydown', event => {
+    if (event.key.toLowerCase() === 'm' && event.target.tagName !== 'INPUT') menuButton.click();
+  });
+
+  window.addEventListener('resize', resize);
+  resize();
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
