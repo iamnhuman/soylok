@@ -85,8 +85,7 @@
 </head>
 <body>
 <div id="stage">
-  <video id="video" autoplay muted loop playsinline controls crossorigin="anonymous"
-    src="https://videos.pexels.com/video-files/3130284/3130284-hd_1920_1080_30fps.mp4"></video>
+  <video id="video" autoplay muted loop playsinline controls crossorigin="anonymous"></video>
   <div id="youtubeHost" aria-label="YouTube player"></div>
   <canvas id="fx"></canvas>
   <div id="mediaLoader" hidden role="status" aria-live="polite">
@@ -105,7 +104,7 @@
 <div id="panel">
   <div class="row">
     <div class="loadrow">
-      <input id="videoUrl" type="text" aria-label="Ссылка на видео" value="https://videos.pexels.com/video-files/3130284/3130284-hd_1920_1080_30fps.mp4">
+      <input id="videoUrl" type="text" aria-label="Ссылка на видео" value="https://www.youtube.com/watch?v=mDeuCvbl3Oo">
       <button id="fileButton" type="button">FILE</button>
       <button id="load" type="button">LOAD</button>
       <input id="videoFile" type="file" accept="video/*,audio/*" hidden>
@@ -1990,6 +1989,10 @@
   window.addEventListener('resize', resize);
   resize();
   requestAnimationFrame(render);
+  const defaultVideoUrl = document.getElementById('videoUrl').value.trim();
+  const defaultYouTubeId = extractYouTubeId(defaultVideoUrl);
+  if (defaultYouTubeId) loadYouTubeVideo(defaultYouTubeId);
+  else if (defaultVideoUrl) preloadRemoteVideo(defaultVideoUrl);
 })();
 </script>
 </body>
