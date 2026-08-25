@@ -185,16 +185,42 @@
   const TAU = Math.PI * 2;
   const SEQUENCE_SECONDS = 158;
   const TEXT_LINES = [
-    'we will make it',
-    'motion study / frame 01',
-    'signal, memory, movement',
-    'nothing stays perfectly aligned',
-    'новая сцена начинается здесь',
-    'take 06 — camera A',
-    'please keep moving',
-    'the centre keeps shifting',
-    '01:17:24 / live frame',
-    'shape follows sound'
+    'гной сосков стекает в отдел аналитики',
+    'члены овец проходят плановую инвентаризацию',
+    'баран подписывает акт о капитуляции трусов',
+    'хуй компаса указывает прямо на бухгалтерию',
+    'три соска спорят о налогах и влажности',
+    'священный прыщ управляет погодой во вторник',
+    'жопа вселенной потеряла служебный пропуск',
+    'кишечник луны согласовал удалённую работу',
+    'мокрый бухгалтер орёт на треугольник',
+    'гнойный хор репетирует гимн холодильника',
+    'овечий член назначен исполняющим обязанности облака',
+    'пастух считает яйца по системе двойной записи',
+    'рот асфальта выплюнул секретный протокол',
+    'сосок без лицензии торгует эхом в переходе',
+    'пердёж архангела застрял в турникете',
+    'сраный метеоролог прогнозирует котлету',
+    'клизма судьбы перепутала этаж и эпоху',
+    'гроб на колёсиках требует квартальную премию',
+    'блевотина геометрии пошла на повышение',
+    'пупок диктатора торжественно отменил понедельник',
+    'яйца тумана висят в отделе кадров',
+    'овца объясняет члену корпоративную культуру',
+    'мясной факс передаёт молитву канализации',
+    'протухший нимб хрустит под языком директора',
+    'жидкий забор мечтает стать половым органом',
+    'гной вежливо просит сосок покинуть помещение',
+    'шерстяной хуй стучится в закрытое измерение',
+    'таблетка страха работает старшим кассиром',
+    'мёртвый лифт переваривает мнение пассажира',
+    'анус космоса печатает отчёт без полей',
+    'сосиска апокалипсиса забыла пароль от неба',
+    'кривой член барометра требует северный ветер',
+    'овечья промежность поёт в пустую кружку',
+    'кровавый пельмень проводит собрание жильцов',
+    'гной сосков / финальный экспорт / take 06',
+    'nothing is aligned but everything is moist'
   ];
 
   let W = 1;
@@ -696,24 +722,29 @@
     });
 
     const textLayouts = [
-      [.70, .075, .25, 'center', 4, .42],
-      [.59, .145, .34, 'center', 4, .34],
-      [.64, .205, .30, 'right', 5, .23],
-      [.72, .235, .21, 'left', 5, .36],
-      [.22, .375, .22, 'center', 5, .38],
-      [.76, .405, .18, 'left', 6, .28],
-      [.34, .525, .17, 'right', 4, .32],
-      [.83, .535, .18, 'center', 6, .25],
-      [.54, .255, .27, 'center', 6, .22],
-      [.49, .325, .25, 'left', 5, .18]
+      [.055, .07, .245, 'left',   7, .34, -.012],
+      [.075, .29, .225, 'left',   8, .24,  .009],
+      [.045, .53, .27,  'left',   7, .31, -.006],
+      [.29,  .015,.25,  'center', 8, .27,  .008],
+      [.31,  .22, .24,  'center', 7, .38, -.011],
+      [.275, .43, .285, 'center', 8, .22,  .006],
+      [.32,  .65, .22,  'center', 7, .33, -.008],
+      [.52,  .06, .26,  'center', 8, .36,  .007],
+      [.55,  .255,.235, 'center', 7, .23, -.01],
+      [.51,  .45, .285, 'center', 8, .32,  .005],
+      [.57,  .66, .22,  'center', 7, .26, -.007],
+      [.755, .025,.225, 'right',  8, .31, -.008],
+      [.72,  .23, .27,  'right',  7, .39,  .011],
+      [.77,  .45, .215, 'right',  8, .23, -.006],
+      [.73,  .66, .26,  'right',  7, .34,  .008]
     ];
     textFragments = textLayouts.map((layout, index) => {
-      const [x, y, width, align, lineCount, alpha] = layout;
+      const [x, y, width, align, lineCount, alpha, rotation] = layout;
       return {
-        x, y, width, align, alpha,
-        lines: Array.from({length: lineCount}, (_, line) => TEXT_LINES[(index * 2 + line) % TEXT_LINES.length]),
-        size: rnd(10.5, 14.5) * scale,
-        lineHeight: rnd(.92, 1.05),
+        x, y, width, align, alpha, rotation,
+        lines: Array.from({length: lineCount}, (_, line) => TEXT_LINES[(index * 3 + line * 2) % TEXT_LINES.length]),
+        size: rnd(11.4, 16.2) * scale,
+        lineHeight: rnd(.82, .97),
         phase: rnd(0, TAU)
       };
     });
@@ -1302,22 +1333,26 @@
   function drawTextCollage(t, opacity, chaos, reactive = audioMetrics) {
     const disorder = Math.pow(chaos, 1.55);
     const peakScale = 1 + reactive.peak * .045;
-    const visibleBlocks = clamp(Math.round(8 + amountEl.value / 160), 8, textFragments.length);
+    const visibleBlocks = clamp(Math.round(11 + amountEl.value / 85), 11, textFragments.length);
 
     for (let blockIndex = 0; blockIndex < visibleBlocks; blockIndex++) {
       const fragment = textFragments[blockIndex];
-      const x = fragment.x * W + Math.sin(t * .23 + fragment.phase) * W * .012 * disorder;
-      const y = fragment.y * H + Math.cos(t * .19 + fragment.phase) * H * .01 * disorder;
+      const columnKick = Math.sin(t * .23 + fragment.phase) * W * .018 * disorder;
+      const x = fragment.x * W + columnKick;
+      const y = fragment.y * H + Math.cos(t * .19 + fragment.phase) * H * .018 * disorder;
       const fontSize = fragment.size * peakScale;
+      const textAlpha = clamp(fragment.alpha * 1.38, .3, .62);
       ctx.save();
       ctx.translate(x, y);
-      ctx.globalAlpha = fragment.alpha * opacity * (.82 + reactive.peak * .18);
+      ctx.rotate(fragment.rotation + Math.sin(t * .17 + fragment.phase) * .008 * disorder);
+      ctx.globalAlpha = textAlpha * opacity * (.82 + reactive.peak * .18);
       ctx.fillStyle = ORANGE;
       ctx.font = `500 ${fontSize}px Arial, Helvetica, sans-serif`;
       ctx.textAlign = fragment.align;
       ctx.textBaseline = 'top';
       for (let lineIndex = 0; lineIndex < fragment.lines.length; lineIndex++) {
-        const lineJitter = Math.sin(fragment.phase + lineIndex * 1.7) * 5 * disorder;
+        const lineJitter = Math.sin(fragment.phase + lineIndex * 1.7) * (2 + 9 * disorder);
+        ctx.globalAlpha = textAlpha * opacity * (.68 + .32 * Math.sin(lineIndex * 2.2 + fragment.phase) ** 2);
         ctx.fillText(fragment.lines[lineIndex], lineJitter, lineIndex * fontSize * fragment.lineHeight, fragment.width * W);
       }
       ctx.restore();
