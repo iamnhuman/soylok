@@ -53,11 +53,14 @@
     border-radius:9px;background:rgba(255,255,255,.06);color:#fff;padding:0 11px;outline:none
   }
   select{appearance:auto}
-  #load,#fileButton,#audioToggle,#tapBeat{height:39px;border:1px solid rgba(255,106,0,.62);border-radius:9px;background:rgba(255,106,0,.14);color:#ffd0ae;font-weight:800;cursor:pointer;padding:0 14px}
+  #load,#fileButton,#audioToggle,#headTrackToggle,#tapBeat{height:39px;border:1px solid rgba(255,106,0,.62);border-radius:9px;background:rgba(255,106,0,.14);color:#ffd0ae;font-weight:800;cursor:pointer;padding:0 14px}
   #fileButton{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff}
   #audioToggle{width:100%;letter-spacing:.06em}
   #audioToggle.live{background:var(--orange);color:#111;border-color:var(--orange)}
   #audioToggle.error{border-color:#ff4d4d;background:rgba(255,77,77,.12);color:#ffc6c6}
+  #headTrackToggle{width:100%;letter-spacing:.06em}
+  #headTrackToggle.live{background:var(--orange);color:#111;border-color:var(--orange)}
+  #headTrackToggle.error{border-color:#ff4d4d;background:rgba(255,77,77,.12);color:#ffc6c6}
   .sep{height:1px;background:rgba(255,255,255,.09);margin:13px 0}
   .hint{margin-top:8px;color:rgba(255,255,255,.45);font-size:9px;line-height:1.45}
   @media (max-width:560px){#menuButton{right:12px;top:12px}#panel{right:12px;top:66px;width:calc(100vw - 24px)}}
@@ -142,6 +145,12 @@
     <div class="ends"><span>только сильные</span><span>больше пиков</span></div>
   </div>
 
+  <div class="row">
+    <div class="label"><span>Трекинг головы</span><span class="value" id="headTrackStatus">OFF</span></div>
+    <button id="headTrackToggle" type="button">TRACK HEAD</button>
+    <div class="hint">Работает в реальном времени для FILE и прямого видео с CORS. YouTube-iframe не отдаёт кадры странице, поэтому там трекинг недоступен.</div>
+  </div>
+
   <div class="row" id="youtubeBeatRow" hidden>
     <div class="label"><span>YouTube beat clock</span><span class="value" id="bpmValue">120 BPM</span></div>
     <input id="bpm" type="range" min="60" max="190" value="120">
@@ -171,6 +180,8 @@
   const sensitivityValue = document.getElementById('sensitivityValue');
   const audioToggle = document.getElementById('audioToggle');
   const audioStatus = document.getElementById('audioStatus');
+  const headTrackToggle = document.getElementById('headTrackToggle');
+  const headTrackStatus = document.getElementById('headTrackStatus');
   const videoFile = document.getElementById('videoFile');
   const youtubeBeatRow = document.getElementById('youtubeBeatRow');
   const bpmEl = document.getElementById('bpm');
@@ -254,7 +265,21 @@
   let youtubeReadyPromise = null;
   let youtubeBeatOffset = 0;
   let youtubeError = 0;
+  let faceDetector = null;
+  let headTracking = false;
+  let headTrackingLoading = false;
+  let lastHeadDetectionAt = -Infinity;
+  let lastHeadVideoTime = -1;
+  let lastHeadSeenAt = -Infinity;
+  let trackedHead = null;
+  let trackedHeadAlpha = 0;
+  let headDetectionConfidence = 0;
   const audioMetrics = {level: 0, bass: 0, mid: 0, high: 0, flux: 0, peak: 0, gate: 1};
+
+  const MEDIAPIPE_VERSION = '1.0.1';
+  const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
+  const MEDIAPIPE_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
+  const FACE_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite';
 
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -429,6 +454,7 @@
 
   async function loadYouTubeVideo(videoId) {
     video.pause();
+    stopHeadTracking('YOUTUBE IFRAME', true);
     if (youtubeError) resetYouTubeEmbed();
     youtubeError = 0;
     isYouTubeMode = true;
@@ -475,6 +501,163 @@
       audioToggle.classList.add('error');
       if (error.code === 153) showYouTubeNotice(videoId, false);
     }
+  }
+
+  function stopHeadTracking(status = 'OFF', isError = false) {
+    headTracking = false;
+    headTrackingLoading = false;
+    trackedHead = null;
+    trackedHeadAlpha = 0;
+    headDetectionConfidence = 0;
+    lastHeadVideoTime = -1;
+    headTrackStatus.textContent = status;
+    headTrackToggle.textContent = 'TRACK HEAD';
+    headTrackToggle.classList.remove('live');
+    headTrackToggle.classList.toggle('error', isError);
+  }
+
+  async function ensureFaceDetector() {
+    if (faceDetector) return faceDetector;
+    const visionTasks = await import(MEDIAPIPE_MODULE);
+    const vision = await visionTasks.FilesetResolver.forVisionTasks(MEDIAPIPE_WASM);
+    faceDetector = await visionTasks.FaceDetector.createFromOptions(vision, {
+      baseOptions: {modelAssetPath: FACE_MODEL},
+      runningMode: 'VIDEO',
+      minDetectionConfidence: .42,
+      minSuppressionThreshold: .3
+    });
+    return faceDetector;
+  }
+
+  async function setHeadTracking(enabled) {
+    if (!enabled) {
+      stopHeadTracking();
+      return;
+    }
+    if (isYouTubeMode) {
+      stopHeadTracking('YOUTUBE IFRAME', true);
+      return;
+    }
+    if (!video.videoWidth || !video.videoHeight) {
+      stopHeadTracking('VIDEO NOT READY', true);
+      return;
+    }
+    if (headTrackingLoading) return;
+
+    headTrackingLoading = true;
+    headTrackToggle.classList.remove('error');
+    headTrackToggle.textContent = 'LOADING MODEL…';
+    headTrackStatus.textContent = 'LOADING';
+    try {
+      await ensureFaceDetector();
+      headTracking = true;
+      headTrackingLoading = false;
+      lastHeadDetectionAt = -Infinity;
+      lastHeadVideoTime = -1;
+      headTrackToggle.classList.add('live');
+      headTrackToggle.textContent = 'TRACK HEAD: LIVE';
+      headTrackStatus.textContent = 'SEARCHING';
+    } catch (error) {
+      console.error('Head tracker:', error);
+      stopHeadTracking('MODEL ERROR', true);
+      headTrackToggle.textContent = 'RETRY TRACK HEAD';
+    }
+  }
+
+  function updateHeadTracking(now) {
+    if (!headTracking || !faceDetector || isYouTubeMode || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
+    if (now - lastHeadDetectionAt < 82) return;
+    if (video.paused && video.currentTime === lastHeadVideoTime) return;
+    lastHeadDetectionAt = now;
+    lastHeadVideoTime = video.currentTime;
+
+    try {
+      const result = faceDetector.detectForVideo(video, now);
+      const detections = result && Array.isArray(result.detections) ? result.detections : [];
+      if (!detections.length) {
+        trackedHeadAlpha *= .84;
+        if (now - lastHeadSeenAt > 550) headTrackStatus.textContent = 'SEARCHING';
+        return;
+      }
+
+      const detection = detections.reduce((best, item) => {
+        const box = item.boundingBox || {};
+        const bestBox = best.boundingBox || {};
+        return (box.width || 0) * (box.height || 0) > (bestBox.width || 0) * (bestBox.height || 0) ? item : best;
+      });
+      const box = detection.boundingBox;
+      if (!box) return;
+
+      const sourceWidth = video.videoWidth;
+      const sourceHeight = video.videoHeight;
+      const coverScale = Math.max(W / sourceWidth, H / sourceHeight);
+      const offsetX = (W - sourceWidth * coverScale) * .5;
+      const offsetY = (H - sourceHeight * coverScale) * .5;
+      const originX = box.originX ?? box.origin_x ?? 0;
+      const originY = box.originY ?? box.origin_y ?? 0;
+      const rawWidth = (box.width || 0) * coverScale;
+      const rawHeight = (box.height || 0) * coverScale;
+      const centreX = offsetX + (originX + (box.width || 0) * .5) * coverScale;
+      const centreY = offsetY + (originY + (box.height || 0) * .43) * coverScale;
+      const squareSize = Math.max(rawWidth, rawHeight) * 1.48;
+      const target = {
+        x: clamp(centreX - squareSize * .5, -squareSize * .15, W - squareSize * .85),
+        y: clamp(centreY - squareSize * .5, -squareSize * .15, H - squareSize * .85),
+        size: squareSize
+      };
+
+      if (!trackedHead) trackedHead = target;
+      else {
+        const smoothing = .32;
+        trackedHead.x = lerp(trackedHead.x, target.x, smoothing);
+        trackedHead.y = lerp(trackedHead.y, target.y, smoothing);
+        trackedHead.size = lerp(trackedHead.size, target.size, smoothing);
+      }
+      trackedHeadAlpha = lerp(trackedHeadAlpha, 1, .36);
+      lastHeadSeenAt = now;
+      headDetectionConfidence = detection.categories && detection.categories[0] ? detection.categories[0].score || 0 : 0;
+      headTrackStatus.textContent = `LOCK ${Math.round(headDetectionConfidence * 100)}%`;
+    } catch (error) {
+      console.error('Head tracking frame:', error);
+      stopHeadTracking(/cors|security|taint/i.test(String(error)) ? 'CORS BLOCKED' : 'TRACK ERROR', true);
+      headTrackToggle.textContent = 'RETRY TRACK HEAD';
+    }
+  }
+
+  function drawTrackedHead(reactive = audioMetrics) {
+    if (!headTracking || !trackedHead || trackedHeadAlpha < .01) return;
+    const x = trackedHead.x;
+    const y = trackedHead.y;
+    const size = trackedHead.size;
+    const corner = size * .19;
+    const lineWidth = clamp(size * .022, 2, 6) * (1 + reactive.peak * .35);
+    ctx.save();
+    ctx.globalAlpha = trackedHeadAlpha;
+    ctx.strokeStyle = ORANGE;
+    ctx.fillStyle = ORANGE;
+    ctx.lineWidth = Math.max(1, lineWidth * .34);
+    ctx.strokeRect(x, y, size, size);
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'square';
+    ctx.shadowColor = ORANGE;
+    ctx.shadowBlur = 7 + reactive.peak * 10;
+    ctx.beginPath();
+    ctx.moveTo(x, y + corner); ctx.lineTo(x, y); ctx.lineTo(x + corner, y);
+    ctx.moveTo(x + size - corner, y); ctx.lineTo(x + size, y); ctx.lineTo(x + size, y + corner);
+    ctx.moveTo(x, y + size - corner); ctx.lineTo(x, y + size); ctx.lineTo(x + corner, y + size);
+    ctx.moveTo(x + size - corner, y + size); ctx.lineTo(x + size, y + size); ctx.lineTo(x + size, y + size - corner);
+    ctx.stroke();
+
+    const labelHeight = clamp(size * .13, 18, 32);
+    const labelWidth = clamp(size * .55, 82, 150);
+    ctx.shadowBlur = 0;
+    ctx.fillRect(x, y - labelHeight, labelWidth, labelHeight);
+    ctx.fillStyle = '#111';
+    ctx.font = `800 ${clamp(labelHeight * .48, 9, 14)}px Arial, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`HEAD 01  ${Math.round(headDetectionConfidence * 100)}%`, x + 7, y - labelHeight * .5);
+    ctx.restore();
   }
 
   function resetAudioDetector() {
@@ -1480,6 +1663,7 @@
     const t = effectTime(now);
     const weights = modeWeights(t);
     const reactive = updateAudio(now);
+    updateHeadTracking(now);
     const gate = reactive.gate;
     const sceneGate = .32 + gate * .68;
     const chaos = +chaosEl.value / 100;
@@ -1508,6 +1692,7 @@
     if (weights.pluses * sceneGate > .001) drawPlusField(t + 2.1, weights.pluses * sceneGate, chaos, .62, reactive);
     if (weights.arcs * sceneGate > .001) drawArcs(t, weights.arcs * sceneGate, chaos, reactive);
     if (weights.endCard * sceneGate > .001) drawEndCard(t, weights.endCard * sceneGate, reactive);
+    drawTrackedHead(reactive);
 
     requestAnimationFrame(render);
   }
@@ -1543,6 +1728,7 @@
 
   function loadVideoSource(source, isLocal = false) {
     if (youtubePlayer && typeof youtubePlayer.pauseVideo === 'function') youtubePlayer.pauseVideo();
+    stopHeadTracking();
     isYouTubeMode = false;
     stage.classList.remove('youtube');
     youtubeBeatRow.hidden = true;
@@ -1591,6 +1777,7 @@
   });
 
   audioToggle.addEventListener('click', () => setAudioReactive(!audioReactive));
+  headTrackToggle.addEventListener('click', () => setHeadTracking(!headTracking));
 
   document.addEventListener('keydown', event => {
     if (event.key.toLowerCase() === 'm' && event.target.tagName !== 'INPUT') menuButton.click();
