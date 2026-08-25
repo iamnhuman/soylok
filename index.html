@@ -88,14 +88,24 @@
     <div class="label"><span>Режим</span><span class="value" id="modeValue">Clip sequence</span></div>
     <select id="mode">
       <option value="sequence">Clip sequence</option>
+      <option value="title-card">Orange title card</option>
+      <option value="checker-floor">Perspective checker</option>
+      <option value="dash-rain">Falling dashes</option>
       <option value="rectangles">Rounded rectangles</option>
+      <option value="weather-hud">Weather HUD</option>
+      <option value="doodles">White doodles</option>
+      <option value="asterisks">Asterisks + geometry</option>
       <option value="text-collage">Text collage</option>
+      <option value="credits">Credits cross</option>
+      <option value="signature">Signature line</option>
+      <option value="tracking">Tracking lines</option>
+      <option value="end-card">Orange end card</option>
       <option value="plus-discs">Pluses + discs</option>
       <option value="dots">Dots / sparks</option>
       <option value="pluses">Plus field</option>
       <option value="arcs">Tracking arcs</option>
     </select>
-    <div class="hint">Sequence повторяет монтажную логику референса: 36-секундный цикл синхронизирован со временем видео. Страница автономна: открывай файл напрямую или вставляй его целиком в HTML-панель CodePen.</div>
+    <div class="hint">Sequence повторяет полный 158-секундный таймлайн референса и синхронизирован со временем видео. Страница автономна: открывай файл напрямую или вставляй его целиком в HTML-панель CodePen.</div>
   </div>
 
   <div class="sep"></div>
@@ -173,7 +183,7 @@
   const PALE_ORANGE = '#ff9b52';
   const WHITE = '#ffffff';
   const TAU = Math.PI * 2;
-  const SEQUENCE_SECONDS = 36;
+  const SEQUENCE_SECONDS = 158;
   const TEXT_LINES = [
     'we will make it',
     'motion study / frame 01',
@@ -803,8 +813,18 @@
     const selected = modeEl.value;
     if (selected !== 'sequence') {
       return {
+        titleCard: selected === 'title-card' ? 1 : 0,
+        checkerFloor: selected === 'checker-floor' ? 1 : 0,
+        dashRain: selected === 'dash-rain' ? 1 : 0,
         rectangles: selected === 'rectangles' ? 1 : 0,
+        weatherHud: selected === 'weather-hud' ? 1 : 0,
+        doodles: selected === 'doodles' ? 1 : 0,
+        asterisks: selected === 'asterisks' ? 1 : 0,
         textCollage: selected === 'text-collage' ? 1 : 0,
+        credits: selected === 'credits' ? 1 : 0,
+        signature: selected === 'signature' ? 1 : 0,
+        tracking: selected === 'tracking' ? 1 : 0,
+        endCard: selected === 'end-card' ? 1 : 0,
         plusDiscs: selected === 'plus-discs' ? 1 : 0,
         dots: selected === 'dots' ? 1 : 0,
         pluses: selected === 'pluses' ? 1 : 0,
@@ -818,14 +838,25 @@
       const fadeOut = 1 - smoothstep(end - fade, end, local);
       return local >= start && local <= end ? fadeIn * fadeOut : 0;
     };
+    const windows = (...items) => Math.max(0, ...items.map(item => envelope(...item)));
 
     return {
-      rectangles: envelope(0, 6, .58),
-      textCollage: envelope(5.25, 12.85, .72),
-      plusDiscs: envelope(12.05, 18.15, .62),
-      dots: envelope(17.35, 25.25, .72),
-      pluses: envelope(24.4, 30.45, .68),
-      arcs: envelope(29.65, 36, .72)
+      titleCard: windows([0, 3.4, .35], [104, 107.2, .22]),
+      plusDiscs: envelope(2.7, 7.5, .5),
+      pluses: windows([3, 8.6, .55], [112.5, 121.5, .65], [145, 152, .6]),
+      tracking: windows([6.5, 18.2, .65], [96, 104, .55]),
+      arcs: envelope(7.5, 18.2, .7),
+      checkerFloor: envelope(17.2, 24.8, .55),
+      dashRain: windows([20, 29.5, .55], [145, 151.8, .45]),
+      rectangles: envelope(28.5, 44, .65),
+      weatherHud: envelope(43, 55.5, .7),
+      doodles: envelope(54, 70.5, .7),
+      asterisks: windows([63, 76.5, .65], [98, 104.5, .55]),
+      textCollage: envelope(73.5, 84.5, .7),
+      credits: windows([83.5, 98, .7], [134, 145.5, .65]),
+      signature: windows([86.5, 94.5, .55], [107, 113.5, .55]),
+      dots: envelope(117, 135.5, .75),
+      endCard: envelope(153, 158, .45)
     };
   }
 
@@ -868,6 +899,360 @@
     ctx.lineTo(x, y + r);
     ctx.quadraticCurveTo(x, y, x + r, y);
     ctx.closePath();
+  }
+
+  function drawTitleCard(t, opacity, reactive = audioMetrics) {
+    ctx.save();
+    ctx.globalAlpha = opacity * (.94 + reactive.peak * .06);
+    ctx.fillStyle = ORANGE;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = opacity * (.13 + reactive.peak * .08);
+    ctx.fillStyle = '#ffd07d';
+    ctx.font = `700 ${clamp(Math.min(W, H) * .072, 32, 88)}px Arial, Helvetica, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('сделаем это', W * .5, H * .5 + Math.sin(t * .8) * 2);
+    ctx.restore();
+  }
+
+  function drawTrackingOverlay(t, opacity, chaos, reactive = audioMetrics) {
+    const anchors = [[.18, .32], [.51, .39], [.78, .3], [.66, .68]];
+    const jitter = Math.pow(chaos, 1.4);
+    ctx.save();
+    ctx.strokeStyle = ORANGE;
+    ctx.fillStyle = ORANGE;
+    ctx.lineWidth = clamp(Math.min(W, H) * .00135, 1, 2.2);
+    ctx.globalAlpha = opacity * (.34 + reactive.peak * .22);
+    for (let index = 0; index < anchors.length; index++) {
+      const anchor = anchors[index];
+      const x = anchor[0] * W + Math.sin(t * .55 + index * 1.7) * W * .012 * jitter;
+      const y = anchor[1] * H + Math.cos(t * .48 + index * 1.3) * H * .012 * jitter;
+      const boxW = W * (.07 + index % 2 * .018);
+      const boxH = H * (.12 + (index + 1) % 2 * .035);
+      const cut = Math.min(boxW, boxH) * .23;
+      ctx.beginPath();
+      ctx.moveTo(x - boxW * .5, y - boxH * .5 + cut); ctx.lineTo(x - boxW * .5, y - boxH * .5); ctx.lineTo(x - boxW * .5 + cut, y - boxH * .5);
+      ctx.moveTo(x + boxW * .5 - cut, y - boxH * .5); ctx.lineTo(x + boxW * .5, y - boxH * .5); ctx.lineTo(x + boxW * .5, y - boxH * .5 + cut);
+      ctx.moveTo(x - boxW * .5, y + boxH * .5 - cut); ctx.lineTo(x - boxW * .5, y + boxH * .5); ctx.lineTo(x - boxW * .5 + cut, y + boxH * .5);
+      ctx.moveTo(x + boxW * .5 - cut, y + boxH * .5); ctx.lineTo(x + boxW * .5, y + boxH * .5); ctx.lineTo(x + boxW * .5, y + boxH * .5 - cut);
+      ctx.stroke();
+      ctx.globalAlpha = opacity * .13;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      ctx.globalAlpha = opacity * (.38 + reactive.peak * .25);
+      drawPlus(x, y, clamp(Math.min(W, H) * .016, 8, 18), 0, opacity * .65);
+    }
+    ctx.globalAlpha = opacity * .62;
+    ctx.font = `500 ${clamp(Math.min(W, H) * .018, 11, 19)}px Arial, sans-serif`;
+    ctx.fillText('tracking / subject 04', W * .055, H * .88);
+    ctx.fillText('signal locked', W * .76, H * .13);
+    ctx.restore();
+  }
+
+  function drawPerspectiveChecker(t, opacity, chaos, reactive = audioMetrics) {
+    const rows = 11;
+    const columns = 13;
+    const horizon = H * .43;
+    const centre = W * .5;
+    const disorder = Math.pow(chaos, 1.45);
+    ctx.save();
+    ctx.fillStyle = ORANGE;
+    ctx.globalAlpha = opacity * (.77 + reactive.peak * .16);
+    for (let row = 0; row < rows; row++) {
+      const d0 = Math.pow(row / rows, 1.72);
+      const d1 = Math.pow((row + 1) / rows, 1.72);
+      const y0 = lerp(horizon, H * 1.04, d0);
+      const y1 = lerp(horizon, H * 1.04, d1);
+      const half0 = lerp(W * .09, W * .66, d0);
+      const half1 = lerp(W * .09, W * .66, d1);
+      for (let column = 0; column < columns; column++) {
+        if ((row + column) % 2) continue;
+        const u0 = column / columns;
+        const u1 = (column + .86) / columns;
+        const wobble = Math.sin(row * 2.3 + column * 1.7 + t * .4) * 2.5 * disorder;
+        ctx.beginPath();
+        ctx.moveTo(lerp(centre - half0, centre + half0, u0) + wobble, y0);
+        ctx.lineTo(lerp(centre - half0, centre + half0, u1) + wobble, y0);
+        ctx.lineTo(lerp(centre - half1, centre + half1, u1) - wobble, y1);
+        ctx.lineTo(lerp(centre - half1, centre + half1, u0) - wobble, y1);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawDashRain(t, opacity, chaos, reactive = audioMetrics) {
+    const limit = clamp(Math.round(42 + amountEl.value * .28), 42, dots.length);
+    const disorder = Math.pow(chaos, 1.3);
+    ctx.save();
+    ctx.strokeStyle = ORANGE;
+    ctx.lineCap = 'round';
+    for (let index = 0; index < limit; index++) {
+      const particle = dots[index];
+      const orderedX = particle.gridX * W;
+      const randomX = particle.x * W;
+      const x = lerp(orderedX, randomX, chaos) + Math.sin(t * .35 + particle.phase) * 8 * disorder;
+      const speed = 13 + particle.speed * 32 + reactive.peak * 28;
+      const y = wrap(particle.y * H + t * speed + index * 7, -40, H + 40);
+      const length = clamp(particle.radius * (4.5 + reactive.peak * 2.2), 6, 28);
+      ctx.globalAlpha = opacity * particle.alpha * (.45 + reactive.high * .35 + reactive.peak * .25);
+      ctx.lineWidth = clamp(particle.radius * .58, 1, 2.8);
+      ctx.beginPath();
+      ctx.moveTo(x, y - length * .5);
+      ctx.lineTo(x, y + length * .5);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawWeatherIcon(x, y, size, type, alpha) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = ORANGE;
+    ctx.fillStyle = ORANGE;
+    ctx.lineWidth = Math.max(1.5, size * .055);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (type === 0) {
+      ctx.beginPath(); ctx.arc(0, 0, size * .23, 0, TAU); ctx.stroke();
+      for (let i = 0; i < 10; i++) {
+        const a = i / 10 * TAU;
+        ctx.beginPath(); ctx.moveTo(Math.cos(a) * size * .32, Math.sin(a) * size * .32); ctx.lineTo(Math.cos(a) * size * .49, Math.sin(a) * size * .49); ctx.stroke();
+      }
+    } else if (type === 3) {
+      ctx.beginPath();
+      ctx.moveTo(-size * .42, -size * .08); ctx.bezierCurveTo(-size * .2, -size * .2, size * .13, 0, size * .38, -size * .1);
+      ctx.moveTo(-size * .36, size * .09); ctx.bezierCurveTo(-size * .14, -.02 * size, size * .08, size * .18, size * .32, size * .06);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(-size * .18, 0, size * .22, Math.PI, 0);
+      ctx.arc(size * .04, -size * .08, size * .27, Math.PI * 1.08, Math.PI * 1.95);
+      ctx.arc(size * .28, .02 * size, size * .18, Math.PI * 1.15, Math.PI * 1.92);
+      ctx.lineTo(-size * .35, size * .16); ctx.closePath(); ctx.fill();
+      if (type === 1) {
+        ctx.globalAlpha *= .85; ctx.beginPath(); ctx.arc(-size * .27, -size * .24, size * .16, 0, TAU); ctx.stroke();
+      }
+      if (type === 2) {
+        ctx.beginPath(); ctx.moveTo(0, size * .18); ctx.lineTo(-size * .1, size * .5); ctx.lineTo(size * .04, size * .43); ctx.lineTo(-size * .04, size * .68); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawWeatherHud(t, opacity, chaos, reactive = audioMetrics) {
+    const disorder = Math.pow(chaos, 1.35);
+    const pulse = 1 + reactive.peak * .025;
+    const frameX = W * .36 + Math.sin(t * .22) * W * .008 * disorder;
+    const frameY = H * .12;
+    const frameW = W * .51;
+    const frameH = H * .58;
+    ctx.save();
+    ctx.strokeStyle = ORANGE;
+    ctx.fillStyle = ORANGE;
+    ctx.lineWidth = clamp(Math.min(W, H) * .006, 3, 8);
+    ctx.globalAlpha = opacity * (.76 + reactive.peak * .18);
+    ctx.strokeRect(frameX, frameY, frameW, frameH);
+
+    ctx.globalAlpha = opacity * .88;
+    roundedRectanglePath(W * .05, H * .25, W * .24 * pulse, H * .16, clamp(W * .008, 8, 16)); ctx.fill();
+    roundedRectanglePath(W * .72, H * .24, W * .25 * pulse, H * .31, clamp(W * .008, 8, 16)); ctx.fill();
+
+    const iconY = H * .84;
+    const iconStart = W * .34;
+    for (let icon = 0; icon < 6; icon++) drawWeatherIcon(iconStart + icon * W * .103, iconY, clamp(W * .055, 34, 68), icon % 4, opacity * .8);
+
+    ctx.globalAlpha = opacity * .72;
+    ctx.font = `500 ${clamp(Math.min(W, H) * .018, 11, 20)}px Arial, sans-serif`;
+    ctx.fillText('thunderstorm in 3', W * .55, H * .31);
+
+    const personX = W * .91;
+    const personY = H * .08;
+    const s = clamp(Math.min(W, H) * .08, 42, 82);
+    ctx.lineWidth = Math.max(2, s * .1);
+    ctx.beginPath(); ctx.arc(personX, personY, s * .16, 0, TAU); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(personX, personY + s * .18); ctx.lineTo(personX - s * .04, personY + s * .56);
+    ctx.lineTo(personX + s * .28, personY + s * .58); ctx.lineTo(personX + s * .42, personY + s * .83);
+    ctx.moveTo(personX - s * .02, personY + s * .38); ctx.lineTo(personX + s * .28, personY + s * .35);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawStickFigure(x, y, size, pose, phase) {
+    const swing = Math.sin(phase) * size * .2;
+    const head = size * .18;
+    ctx.beginPath(); ctx.arc(x, y - size * .46, head, 0, TAU); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y - size * .28); ctx.lineTo(x + swing * .12, y + size * .16);
+    if (pose % 3 === 0) {
+      ctx.moveTo(x, y - size * .15); ctx.lineTo(x - size * .34, y - size * .38 + swing);
+      ctx.moveTo(x, y - size * .12); ctx.lineTo(x + size * .32, y - size * .26 - swing);
+    } else if (pose % 3 === 1) {
+      ctx.moveTo(x, y - size * .16); ctx.lineTo(x - size * .31, y + size * .04);
+      ctx.moveTo(x, y - size * .16); ctx.quadraticCurveTo(x + size * .24, y - size * .5, x + size * .38, y - size * .28);
+    } else {
+      ctx.moveTo(x, y - size * .16); ctx.quadraticCurveTo(x - size * .22, y - size * .5, x - size * .38, y - size * .28);
+      ctx.moveTo(x, y - size * .16); ctx.lineTo(x + size * .34, y + size * .01);
+    }
+    ctx.moveTo(x + swing * .12, y + size * .16); ctx.lineTo(x - size * .25, y + size * .48 + swing * .3);
+    ctx.moveTo(x + swing * .12, y + size * .16); ctx.lineTo(x + size * .27, y + size * .46 - swing * .35);
+    ctx.stroke();
+  }
+
+  function drawDoodles(t, opacity, chaos, reactive = audioMetrics) {
+    const figures = [[.12, .68, .23], [.29, .55, .19], [.56, .68, .25], [.75, .5, .2], [.91, .66, .24]];
+    const disorder = Math.pow(chaos, 1.4);
+    ctx.save();
+    ctx.strokeStyle = WHITE;
+    ctx.lineWidth = clamp(Math.min(W, H) * .006, 3, 8);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = WHITE;
+    ctx.shadowBlur = clamp(Math.min(W, H) * .012, 6, 18);
+    ctx.globalAlpha = opacity * (.78 + reactive.peak * .2);
+    for (let index = 0; index < figures.length; index++) {
+      const figure = figures[index];
+      const x = figure[0] * W + Math.sin(t * .46 + index) * W * .012 * disorder;
+      const y = figure[1] * H + Math.cos(t * .42 + index * 1.4) * H * .01 * disorder;
+      drawStickFigure(x, y, Math.min(W, H) * figure[2], index, t * (1.4 + reactive.peak) + index);
+    }
+    ctx.restore();
+  }
+
+  function drawAsterisk(x, y, size, angle, alpha) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = ORANGE;
+    ctx.lineWidth = clamp(size * .13, 1, 3);
+    ctx.lineCap = 'square';
+    for (let spoke = 0; spoke < 3; spoke++) {
+      const a = spoke * Math.PI / 3;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * -size * .5, Math.sin(a) * -size * .5);
+      ctx.lineTo(Math.cos(a) * size * .5, Math.sin(a) * size * .5);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawAsteriskGeometry(t, opacity, chaos, reactive = audioMetrics) {
+    const limit = clamp(Math.round(amountEl.value * .52), 34, pluses.length);
+    for (let index = 0; index < limit; index++) {
+      const particle = pluses[index];
+      const pos = particlePosition(particle, t * .72, chaos);
+      const size = particle.size * (1.05 + reactive.peak * .35);
+      drawAsterisk(pos.x, pos.y, size, particle.phase + t * .08 * chaos, particle.alpha * opacity * .82);
+    }
+
+    const centreX = W * .51;
+    const centreY = H * .34;
+    ctx.save();
+    ctx.fillStyle = ORANGE;
+    ctx.globalAlpha = opacity * (.46 + reactive.peak * .22);
+    ctx.fillRect(centreX, centreY, W * .038, H * .31);
+    ctx.fillRect(centreX - W * .047, centreY + H * .055, W * .09, H * .075);
+    ctx.beginPath(); ctx.arc(centreX - W * .045, centreY + H * .1, clamp(Math.min(W, H) * .055, 22, 52), 0, TAU); ctx.fill();
+    ctx.globalAlpha = opacity * .27;
+    ctx.fillRect(centreX + W * .015, centreY - H * .055, W * .038, H * .095);
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = opacity * .72;
+    ctx.fillStyle = ORANGE;
+    ctx.font = `500 ${clamp(Math.min(W, H) * .02, 12, 22)}px Arial, sans-serif`;
+    ctx.fillText('member', W * .53, H * .3);
+    ctx.fillText('headache', W * .17, H * .64);
+    ctx.fillText('signal.mp3 playing', W * .65, H * .54);
+    ctx.restore();
+  }
+
+  function drawSignatureLine(t, opacity, reactive = audioMetrics) {
+    const sway = Math.sin(t * .35) * W * .008;
+    ctx.save();
+    ctx.strokeStyle = PALE_ORANGE;
+    ctx.globalAlpha = opacity * (.62 + reactive.peak * .22);
+    ctx.lineWidth = clamp(Math.min(W, H) * .003, 1.5, 4.2);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(W * .14, H * .57);
+    ctx.bezierCurveTo(W * .23, H * .22, W * .3, H * .81, W * .4, H * .42);
+    ctx.bezierCurveTo(W * .48, H * .12, W * .48, H * .77, W * .56, H * .43);
+    ctx.bezierCurveTo(W * .63, H * .16, W * .64, H * .71, W * .71, H * .43);
+    ctx.bezierCurveTo(W * .76, H * .25, W * .79, H * .53, W * .86 + sway, H * .36);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  const CREDIT_LINES = [
+    'motion design / frame study', 'direction — orange unit', 'camera tracking — scene 04',
+    'graphic system — crosses / dots', 'type treatment — offset text', 'compositing — live picture',
+    'animation — signal response', 'sound gate — peak detector', 'layout — centre collision',
+    'colour — ff6a00', 'render — browser canvas', 'special thanks — movement',
+    'we will make it', 'мы сделаем это'
+  ];
+
+  function drawCreditsCross(t, opacity, reactive = audioMetrics) {
+    const finalCredits = wrap(t, 0, SEQUENCE_SECONDS) > 125;
+    const fontSize = clamp(Math.min(W, H) * (finalCredits ? .018 : .015), 10, 19);
+    ctx.save();
+    ctx.fillStyle = ORANGE;
+    if (!finalCredits) {
+      ctx.globalAlpha = opacity * (.54 + reactive.peak * .2);
+      ctx.fillRect(W * .52, H * .16, W * .045, H * .6);
+      ctx.fillRect(W * .39, H * .39, W * .3, H * .085);
+    }
+    ctx.globalAlpha = opacity * (.64 + reactive.peak * .18);
+    ctx.font = `500 ${fontSize}px Arial, Helvetica, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const x = finalCredits ? W * .5 : W * .515;
+    const startY = finalCredits ? H * .07 : H * .12;
+    const repetitions = finalCredits ? 2 : 1;
+    for (let block = 0; block < repetitions; block++) {
+      for (let line = 0; line < CREDIT_LINES.length; line++) {
+        const y = startY + (block * CREDIT_LINES.length + line) * fontSize * .95;
+        if (y > H * .9) break;
+        ctx.fillText(CREDIT_LINES[line], x + Math.sin(line * 2.1) * 3, y);
+      }
+    }
+    ctx.restore();
+    if (!finalCredits) drawSignatureLine(t, opacity * .4, reactive);
+  }
+
+  function drawEndCard(t, opacity, reactive = audioMetrics) {
+    ctx.save();
+    ctx.globalAlpha = opacity * (.91 + reactive.peak * .06);
+    ctx.fillStyle = ORANGE;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#6d2c00';
+    ctx.strokeStyle = '#6d2c00';
+    ctx.lineWidth = clamp(Math.min(W, H) * .005, 2, 6);
+    ctx.globalAlpha = opacity * .38;
+
+    for (let row = 0; row < 4; row++) {
+      for (let column = 0; column < 4; column++) {
+        const x = W * (.08 + column * .035);
+        const y = H * (.08 + row * .045);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + W * .018, y + H * .028); ctx.stroke();
+      }
+    }
+    ctx.beginPath(); ctx.arc(W * .16, H * .46, Math.min(W, H) * .12, 0, TAU); ctx.stroke();
+    drawWeatherIcon(W * .105, H * .77, Math.min(W, H) * .07, 0, opacity * .35);
+    drawWeatherIcon(W * .18, H * .77, Math.min(W, H) * .07, 2, opacity * .35);
+    drawWeatherIcon(W * .255, H * .77, Math.min(W, H) * .07, 3, opacity * .35);
+    roundedRectanglePath(W * .55, H * .16, W * .31, H * .25, 14); ctx.fill();
+    roundedRectanglePath(W * .55, H * .48, W * .31, H * .25, 14); ctx.fill();
+    ctx.globalAlpha = opacity * .22;
+    ctx.fillStyle = '#ffd39c';
+    ctx.font = `700 ${clamp(Math.min(W, H) * .032, 18, 36)}px Arial, sans-serif`;
+    ctx.fillText('NEXT FRAME', W * .58, H * .3);
+    ctx.fillText('ORANGE UNIT', W * .58, H * .62);
+    ctx.restore();
   }
 
   function drawRoundedRectangles(t, opacity, chaos, reactive = audioMetrics) {
@@ -1061,22 +1446,33 @@
     const weights = modeWeights(t);
     const reactive = updateAudio(now);
     const gate = reactive.gate;
+    const sceneGate = .32 + gate * .68;
     const chaos = +chaosEl.value / 100;
     ctx.clearRect(0, 0, W, H);
 
-    if (weights.rectangles * gate > .001) {
-      drawRoundedRectangles(t, weights.rectangles * gate, chaos, reactive);
+    if (weights.titleCard * sceneGate > .001) drawTitleCard(t, weights.titleCard * sceneGate, reactive);
+    if (weights.checkerFloor * sceneGate > .001) drawPerspectiveChecker(t, weights.checkerFloor * sceneGate, chaos, reactive);
+    if (weights.dashRain * sceneGate > .001) drawDashRain(t, weights.dashRain * sceneGate, chaos, reactive);
+    if (weights.rectangles * sceneGate > .001) {
+      drawRoundedRectangles(t, weights.rectangles * sceneGate, chaos, reactive);
     }
-    if (weights.textCollage * gate > .001) {
-      drawTextCollage(t, weights.textCollage * gate, chaos, reactive);
+    if (weights.weatherHud * sceneGate > .001) drawWeatherHud(t, weights.weatherHud * sceneGate, chaos, reactive);
+    if (weights.doodles * sceneGate > .001) drawDoodles(t, weights.doodles * sceneGate, chaos, reactive);
+    if (weights.asterisks * sceneGate > .001) drawAsteriskGeometry(t, weights.asterisks * sceneGate, chaos, reactive);
+    if (weights.textCollage * sceneGate > .001) {
+      drawTextCollage(t, weights.textCollage * sceneGate, chaos, reactive);
     }
-    if (weights.plusDiscs * gate > .001) {
-      drawPlusField(t, weights.plusDiscs * gate, chaos, .82, reactive);
-      drawDiscs(t, weights.plusDiscs * gate, chaos, reactive);
+    if (weights.credits * sceneGate > .001) drawCreditsCross(t, weights.credits * sceneGate, reactive);
+    if (weights.signature * sceneGate > .001) drawSignatureLine(t, weights.signature * sceneGate, reactive);
+    if (weights.tracking * sceneGate > .001) drawTrackingOverlay(t, weights.tracking * sceneGate, chaos, reactive);
+    if (weights.plusDiscs * sceneGate > .001) {
+      drawPlusField(t, weights.plusDiscs * sceneGate, chaos, .82, reactive);
+      drawDiscs(t, weights.plusDiscs * sceneGate, chaos, reactive);
     }
-    if (weights.dots * gate > .001) drawDotField(t, weights.dots * gate, chaos, reactive);
-    if (weights.pluses * gate > .001) drawPlusField(t + 2.1, weights.pluses * gate, chaos, .62, reactive);
-    if (weights.arcs * gate > .001) drawArcs(t, weights.arcs * gate, chaos, reactive);
+    if (weights.dots * sceneGate > .001) drawDotField(t, weights.dots * sceneGate, chaos, reactive);
+    if (weights.pluses * sceneGate > .001) drawPlusField(t + 2.1, weights.pluses * sceneGate, chaos, .62, reactive);
+    if (weights.arcs * sceneGate > .001) drawArcs(t, weights.arcs * sceneGate, chaos, reactive);
+    if (weights.endCard * sceneGate > .001) drawEndCard(t, weights.endCard * sceneGate, reactive);
 
     requestAnimationFrame(render);
   }
