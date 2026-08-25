@@ -229,6 +229,8 @@
   const PALE_ORANGE = '#ff9b52';
   const WHITE = '#ffffff';
   const TAU = Math.PI * 2;
+  const DEFAULT_VIDEO_URL = './base%20video.mp4';
+  const DEFAULT_VIDEO_NAME = 'base video.mp4';
   const EFFECT_SEQUENCE = [
     'titleCard', 'plusDiscs', 'tracking', 'checkerFloor', 'dashRain',
     'rectangles', 'weatherHud', 'doodles', 'geometry', 'textCollage', 'credits',
@@ -875,7 +877,7 @@
   }
 
   async function startRecording() {
-    if (!currentObjectUrl || video.readyState < 2) {
+    if (!video.currentSrc || video.readyState < 2) {
       recordStatus.textContent = 'LOAD VIDEO';
       return;
     }
@@ -1849,6 +1851,31 @@
     }
   }
 
+  async function loadDefaultVideo() {
+    cancelPendingVideoLoad();
+    const token = activeLoadToken;
+    showMediaLoader('ЗАГРУЖАЮ БАЗОВОЕ ВИДЕО', null, DEFAULT_VIDEO_NAME);
+    try {
+      await loadVideoSource(DEFAULT_VIDEO_URL);
+      if (token !== activeLoadToken) return;
+      currentFileStem = 'base-video';
+      fileName.textContent = `${DEFAULT_VIDEO_NAME} · базовое`;
+      fileName.title = DEFAULT_VIDEO_NAME;
+      fileDrop.hidden = true;
+      recordButton.disabled = false;
+      resetRecordUi();
+      hideMediaLoader();
+    } catch (error) {
+      if (token !== activeLoadToken) return;
+      fileName.textContent = 'Базовое видео не найдено';
+      fileDrop.hidden = false;
+      showMediaLoadError(error.message || `Не удалось открыть ${DEFAULT_VIDEO_NAME}`);
+      setTimeout(() => {
+        if (token === activeLoadToken) hideMediaLoader();
+      }, 4200);
+    }
+  }
+
   function isSupportedVideoFile(file) {
     return Boolean(file && (
       String(file.type || '').startsWith('video/') ||
@@ -1926,6 +1953,7 @@
 
   window.addEventListener('resize', resize);
   resize();
+  loadDefaultVideo();
   requestAnimationFrame(render);
 })();
 </script>
