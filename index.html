@@ -285,7 +285,6 @@
   let discs = [];
   let arcs = [];
   let roundedRects = [];
-  let textFragments = [];
   let groups = [];
   let audioContext = null;
   let audioSource = null;
@@ -950,7 +949,6 @@
     discs = [];
     arcs = [];
     roundedRects = [];
-    textFragments = [];
     groups = [];
 
     for (let i = 0; i < 6; i++) {
@@ -977,34 +975,6 @@
         height: height * H,
         direction, slotStart, slotEnd, alpha,
         radius: radius * scale,
-        phase: rnd(0, TAU)
-      };
-    });
-
-    const textLayouts = [
-      [.055, .07, .245, 'left',   7, .34, -.012],
-      [.075, .29, .225, 'left',   8, .24,  .009],
-      [.045, .53, .27,  'left',   7, .31, -.006],
-      [.29,  .015,.25,  'center', 8, .27,  .008],
-      [.31,  .22, .24,  'center', 7, .38, -.011],
-      [.275, .43, .285, 'center', 8, .22,  .006],
-      [.32,  .65, .22,  'center', 7, .33, -.008],
-      [.52,  .06, .26,  'center', 8, .36,  .007],
-      [.55,  .255,.235, 'center', 7, .23, -.01],
-      [.51,  .45, .285, 'center', 8, .32,  .005],
-      [.57,  .66, .22,  'center', 7, .26, -.007],
-      [.755, .025,.225, 'right',  8, .31, -.008],
-      [.72,  .23, .27,  'right',  7, .39,  .011],
-      [.77,  .45, .215, 'right',  8, .23, -.006],
-      [.73,  .66, .26,  'right',  7, .34,  .008]
-    ];
-    textFragments = textLayouts.map((layout, index) => {
-      const [x, y, width, align, lineCount, alpha, rotation] = layout;
-      return {
-        x, y, width, align, alpha, rotation,
-        lines: Array.from({length: lineCount}, (_, line) => TEXT_LINES[(index * 3 + line * 2) % TEXT_LINES.length]),
-        size: rnd(11.4, 16.2) * scale,
-        lineHeight: rnd(.82, .97),
         phase: rnd(0, TAU)
       };
     });
@@ -1462,6 +1432,7 @@
     ctx.globalAlpha = opacity * (.2 + reactive.mid * .22);
     ctx.fillRect(-unit * .14, -unit * 1.08, unit * .28, unit * 2.16);
     ctx.restore();
+    drawDenseTextColumns(t, opacity * .9, chaos, reactive, 1.02);
   }
 
   function drawSignatureLine(t, opacity, reactive = audioMetrics) {
@@ -1593,33 +1564,80 @@
     }
   }
 
-  function drawTextCollage(t, opacity, chaos, reactive = audioMetrics) {
-    const disorder = Math.pow(chaos, 1.55);
-    const peakScale = 1 + reactive.peak * .045;
-    const visibleBlocks = clamp(Math.round(11 + amountEl.value / 85), 11, textFragments.length);
+  function wrapCanvasText(text, maxWidth) {
+    const words = text.split(/\s+/).filter(Boolean);
+    const lines = [];
+    let line = '';
+    for (const word of words) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(candidate).width > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
 
-    for (let blockIndex = 0; blockIndex < visibleBlocks; blockIndex++) {
-      const fragment = textFragments[blockIndex];
-      const columnKick = Math.sin(t * .23 + fragment.phase) * W * .018 * disorder;
-      const x = fragment.x * W + columnKick;
-      const y = fragment.y * H + Math.cos(t * .19 + fragment.phase) * H * .018 * disorder;
-      const fontSize = fragment.size * peakScale;
-      const textAlpha = clamp(fragment.alpha * 1.38, .3, .62);
+  function drawDenseTextColumns(t, opacity, chaos, reactive = audioMetrics, spread = 1) {
+    const disorder = Math.pow(chaos, 1.55);
+    const layerOpacity = clamp(opacity * (1.7 + reactive.peak * .22), 0, 1);
+    const columns = [
+      [.405, .11, .19, 'right',  0, 6, .64, -.008, .88],
+      [.465, .19, .21, 'center', 4, 6, .78,  .006, 1.02],
+      [.535, .27, .21, 'center', 8, 7, .72, -.004, .94],
+      [.59,  .37, .2,  'left',  13, 6, .66,  .009, .9],
+      [.43,  .43, .22, 'right', 17, 7, .69, -.007, .96],
+      [.51,  .53, .22, 'center',22, 7, .76,  .005, .92],
+      [.58,  .64, .2,  'left',  27, 6, .62, -.006, .86],
+      [.32,  .29, .18, 'right', 31, 5, .48,  .008, .78],
+      [.7,   .49, .18, 'left',   2, 5, .46, -.007, .78]
+    ];
+    const baseFontSize = clamp(Math.min(W, H) * .0165, 10.5, 19) * (1 + reactive.peak * .04);
+    ctx.save();
+    ctx.fillStyle = ORANGE;
+    ctx.textBaseline = 'top';
+    for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
+      const [rawX, rawY, widthRatio, align, start, phraseCount, alpha, rotation, scale] = columns[columnIndex];
+      const xRatio = .5 + (rawX - .5) * spread;
+      const phase = columnIndex * 1.73 + start * .21;
+      const x = xRatio * W + Math.sin(t * .22 + phase) * W * .012 * disorder;
+      const y = rawY * H + Math.cos(t * .18 + phase) * H * .012 * disorder;
+      const fontSize = baseFontSize * scale;
+      const maxWidth = widthRatio * W;
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate(fragment.rotation + Math.sin(t * .17 + fragment.phase) * .008 * disorder);
-      ctx.globalAlpha = textAlpha * opacity * (.82 + reactive.peak * .18);
-      ctx.fillStyle = ORANGE;
+      ctx.rotate(rotation + Math.sin(t * .15 + phase) * .006 * disorder);
       ctx.font = `500 ${fontSize}px Arial, Helvetica, sans-serif`;
-      ctx.textAlign = fragment.align;
-      ctx.textBaseline = 'top';
-      for (let lineIndex = 0; lineIndex < fragment.lines.length; lineIndex++) {
-        const lineJitter = Math.sin(fragment.phase + lineIndex * 1.7) * (2 + 9 * disorder);
-        ctx.globalAlpha = textAlpha * opacity * (.68 + .32 * Math.sin(lineIndex * 2.2 + fragment.phase) ** 2);
-        ctx.fillText(fragment.lines[lineIndex], lineJitter, lineIndex * fontSize * fragment.lineHeight, fragment.width * W);
+      ctx.textAlign = align;
+      let cursorY = 0;
+      let renderedLine = 0;
+      for (let phraseIndex = 0; phraseIndex < phraseCount; phraseIndex++) {
+        const phrase = TEXT_LINES[(start + phraseIndex * 3) % TEXT_LINES.length];
+        const wrapped = wrapCanvasText(phrase, maxWidth);
+        for (const line of wrapped) {
+          const jitter = Math.sin(phase + renderedLine * 1.37) * (1 + disorder * 7);
+          const flicker = .72 + .28 * Math.sin(t * .31 + renderedLine * 1.9 + phase) ** 2;
+          ctx.globalAlpha = layerOpacity * alpha * flicker;
+          ctx.fillText(line, jitter, cursorY);
+          if ((columnIndex + renderedLine) % 5 === 0) {
+            ctx.globalAlpha = layerOpacity * alpha * .16;
+            ctx.fillText(line, jitter + fontSize * .22, cursorY - fontSize * .16);
+          }
+          cursorY += fontSize * (.82 + (renderedLine % 3) * .035);
+          renderedLine += 1;
+        }
+        cursorY += fontSize * .08;
       }
       ctx.restore();
     }
+    ctx.restore();
+  }
+
+  function drawTextCollage(t, opacity, chaos, reactive = audioMetrics) {
+    const disorder = Math.pow(chaos, 1.55);
 
     const cardWidth = clamp(W * .2, 120, 280);
     const cardHeight = H * .62;
@@ -1646,6 +1664,7 @@
     roundedRectanglePath(crossX, crossY + verticalHeight * .43, horizontalWidth, horizontalHeight, 2);
     ctx.fill();
     ctx.restore();
+    drawDenseTextColumns(t, opacity, chaos, reactive, 1.2);
   }
 
   function drawPlus(x, y, size, angle, alpha) {
