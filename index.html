@@ -37,6 +37,7 @@
   #mediaLoader.error #mediaLoadTitle,#mediaLoader.error #mediaLoadPercent{color:#ff8e8e}
   @keyframes loaderSpin{to{transform:rotate(360deg)}}
   @keyframes loaderSweep{from{transform:translateX(-115%)}to{transform:translateX(305%)}}
+  @keyframes recordPulse{50%{box-shadow:0 0 0 5px rgba(255,62,62,.12)}}
 
   #menuButton{
     position:fixed;right:18px;top:18px;z-index:20;width:46px;height:46px;
@@ -64,7 +65,7 @@
     border-radius:9px;background:rgba(255,255,255,.06);color:#fff;padding:0 11px;outline:none
   }
   select{appearance:auto}
-  #fileButton,#audioToggle,#headTrackToggle{height:39px;border:1px solid rgba(255,106,0,.62);border-radius:9px;background:rgba(255,106,0,.14);color:#ffd0ae;font-weight:800;cursor:pointer;padding:0 14px}
+  #fileButton,#audioToggle,#headTrackToggle,#recordButton{height:39px;border:1px solid rgba(255,106,0,.62);border-radius:9px;background:rgba(255,106,0,.14);color:#ffd0ae;font-weight:800;cursor:pointer;padding:0 14px}
   #fileButton{width:100%;background:var(--orange);border-color:var(--orange);color:#111;letter-spacing:.06em}
   #fileName{overflow:hidden;color:rgba(255,255,255,.5);font-size:9px;line-height:1.35;text-overflow:ellipsis;white-space:nowrap}
   #audioToggle{width:100%;letter-spacing:.06em}
@@ -73,6 +74,10 @@
   #headTrackToggle{width:100%;letter-spacing:.06em}
   #headTrackToggle.live{background:var(--orange);color:#111;border-color:var(--orange)}
   #headTrackToggle.error{border-color:#ff4d4d;background:rgba(255,77,77,.12);color:#ffc6c6}
+  #recordButton{width:100%;letter-spacing:.06em}
+  #recordButton.live{border-color:#ff3e3e;background:#ff3e3e;color:#111;animation:recordPulse 1.05s ease-in-out infinite}
+  #recordButton.ready{background:var(--orange);border-color:var(--orange);color:#111}
+  #recordButton:disabled{cursor:not-allowed;filter:saturate(.2);opacity:.42}
   .sep{height:1px;background:rgba(255,255,255,.09);margin:13px 0}
   .hint{margin-top:8px;color:rgba(255,255,255,.45);font-size:9px;line-height:1.45}
   @media (max-width:560px){#menuButton{right:12px;top:12px}#panel{right:12px;top:66px;width:calc(100vw - 24px)}}
@@ -114,16 +119,16 @@
   </div>
 
   <div class="row">
-    <div class="label"><span>Режим</span><span class="value" id="modeValue">Clip sequence</span></div>
+    <div class="label"><span>Режим</span><span class="value" id="modeValue">Auto sequence</span></div>
     <select id="mode">
-      <option value="sequence">Clip sequence</option>
+      <option value="sequence">Auto sequence — all effects</option>
       <option value="title-card">Orange title card</option>
       <option value="checker-floor">Perspective checker</option>
       <option value="dash-rain">Falling dashes</option>
       <option value="rectangles">Rounded rectangles</option>
       <option value="weather-hud">Weather HUD</option>
       <option value="doodles">White doodles</option>
-      <option value="asterisks">Asterisks + geometry</option>
+      <option value="geometry">Geometry</option>
       <option value="text-collage">Text collage</option>
       <option value="credits">Credits cross</option>
       <option value="signature">Signature line</option>
@@ -134,7 +139,7 @@
       <option value="pluses">Plus field</option>
       <option value="arcs">Tracking arcs</option>
     </select>
-    <div class="hint">Sequence повторяет полный 158-секундный таймлайн референса и синхронизирован со временем видео. Страница автономна: открывай файл напрямую или вставляй его целиком в HTML-панель CodePen.</div>
+    <div class="hint">Auto sequence циклически меняет все типы эффектов и синхронизирован со временем видео.</div>
   </div>
 
   <div class="sep"></div>
@@ -160,9 +165,9 @@
   <div class="sep"></div>
 
   <div class="row">
-    <div class="label"><span>Аудио-пики</span><span class="value" id="audioStatus">Нажми Start</span></div>
+    <div class="label"><span>Аудио-пики</span><span class="value" id="audioStatus">Авто после файла</span></div>
     <button id="audioToggle" type="button">START AUDIO FX</button>
-    <div class="hint">Браузер разрешает анализ звука только после клика. Локальный файл работает без CORS-ограничений.</div>
+    <div class="hint">Audio FX включается автоматически после выбора файла; кнопка оставлена для ручного отключения.</div>
   </div>
 
   <div class="row">
@@ -172,9 +177,15 @@
   </div>
 
   <div class="row">
-    <div class="label"><span>Трекинг головы</span><span class="value" id="headTrackStatus">OFF</span></div>
-    <button id="headTrackToggle" type="button">TRACK HEAD</button>
-    <div class="hint">Работает в реальном времени для выбранного локального видео.</div>
+    <div class="label"><span>Трекинг лица и рук</span><span class="value" id="headTrackStatus">OFF</span></div>
+    <button id="headTrackToggle" type="button">TRACK FACE + HANDS</button>
+    <div class="hint">Отмечает голову, глаза, уши, нос, рот и до двух рук в реальном времени.</div>
+  </div>
+
+  <div class="row">
+    <div class="label"><span>Экспорт с эффектами</span><span class="value" id="recordStatus">READY</span></div>
+    <button id="recordButton" type="button" disabled>EXPORT FULL VIDEO</button>
+    <div class="hint">Записывает ролик с текущими эффектами и аудио в WebM или MP4 — в зависимости от браузера. Экспорт идёт в реальном времени и автоматически скачивается в конце.</div>
   </div>
 </div>
 
@@ -184,6 +195,8 @@
 
   const canvas = document.getElementById('fx');
   const ctx = canvas.getContext('2d');
+  const exportCanvas = document.createElement('canvas');
+  const exportCtx = exportCanvas.getContext('2d', {alpha: false});
   const stage = document.getElementById('stage');
   const video = document.getElementById('video');
   const amountEl = document.getElementById('amount');
@@ -200,6 +213,8 @@
   const audioStatus = document.getElementById('audioStatus');
   const headTrackToggle = document.getElementById('headTrackToggle');
   const headTrackStatus = document.getElementById('headTrackStatus');
+  const recordButton = document.getElementById('recordButton');
+  const recordStatus = document.getElementById('recordStatus');
   const videoFile = document.getElementById('videoFile');
   const fileDrop = document.getElementById('fileDrop');
   const fileName = document.getElementById('fileName');
@@ -215,7 +230,13 @@
   const PALE_ORANGE = '#ff9b52';
   const WHITE = '#ffffff';
   const TAU = Math.PI * 2;
-  const SEQUENCE_SECONDS = 158;
+  const EFFECT_SEQUENCE = [
+    'titleCard', 'plusDiscs', 'tracking', 'arcs', 'checkerFloor', 'dashRain',
+    'rectangles', 'weatherHud', 'doodles', 'geometry', 'textCollage', 'credits',
+    'signature', 'dots', 'pluses', 'endCard'
+  ];
+  const SCENE_SECONDS = 5.2;
+  const SEQUENCE_SECONDS = EFFECT_SEQUENCE.length * SCENE_SECONDS;
   const TEXT_LINES = [
     'гной сосков стекает в отдел аналитики',
     'члены овец проходят плановую инвентаризацию',
@@ -269,6 +290,7 @@
   let audioContext = null;
   let audioSource = null;
   let analyser = null;
+  let recordingDestination = null;
   let frequencyData = null;
   let previousFrequencyData = null;
   let audioReactive = false;
@@ -280,22 +302,31 @@
   let lastStatusAt = 0;
   let noSignalSince = 0;
   let currentObjectUrl = '';
+  let currentFileStem = 'effects-export';
   let activeLoadToken = 0;
-  let faceDetector = null;
+  let visionFilesetPromise = null;
+  let faceLandmarker = null;
+  let handLandmarker = null;
   let headTracking = false;
   let headTrackingLoading = false;
   let lastHeadDetectionAt = -Infinity;
   let lastHeadVideoTime = -1;
   let lastHeadSeenAt = -Infinity;
-  let trackedHead = null;
-  let trackedHeadAlpha = 0;
-  let headDetectionConfidence = 0;
+  let trackedRegions = {};
+  let trackedHands = [];
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let recordingStream = null;
+  let recordingStartedAt = 0;
+  let recordingPreviousLoop = true;
+  let recordingFileStem = 'effects-export';
   const audioMetrics = {level: 0, bass: 0, mid: 0, high: 0, flux: 0, peak: 0, gate: 1};
 
   const MEDIAPIPE_VERSION = '1.0.1';
   const MEDIAPIPE_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
   const MEDIAPIPE_WASM = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
-  const FACE_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite';
+  const FACE_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+  const HAND_MODEL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
 
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -353,27 +384,46 @@
   function stopHeadTracking(status = 'OFF', isError = false) {
     headTracking = false;
     headTrackingLoading = false;
-    trackedHead = null;
-    trackedHeadAlpha = 0;
-    headDetectionConfidence = 0;
+    trackedRegions = {};
+    trackedHands = [];
     lastHeadVideoTime = -1;
     headTrackStatus.textContent = status;
-    headTrackToggle.textContent = 'TRACK HEAD';
+    headTrackToggle.textContent = 'TRACK FACE + HANDS';
     headTrackToggle.classList.remove('live');
     headTrackToggle.classList.toggle('error', isError);
   }
 
-  async function ensureFaceDetector() {
-    if (faceDetector) return faceDetector;
-    const visionTasks = await import(MEDIAPIPE_MODULE);
-    const vision = await visionTasks.FilesetResolver.forVisionTasks(MEDIAPIPE_WASM);
-    faceDetector = await visionTasks.FaceDetector.createFromOptions(vision, {
-      baseOptions: {modelAssetPath: FACE_MODEL},
-      runningMode: 'VIDEO',
-      minDetectionConfidence: .42,
-      minSuppressionThreshold: .3
-    });
-    return faceDetector;
+  async function ensureTrackingModels() {
+    if (!visionFilesetPromise) {
+      visionFilesetPromise = import(MEDIAPIPE_MODULE).then(async visionTasks => ({
+        visionTasks,
+        fileset: await visionTasks.FilesetResolver.forVisionTasks(MEDIAPIPE_WASM)
+      }));
+    }
+    const {visionTasks, fileset} = await visionFilesetPromise;
+    if (!faceLandmarker) {
+      faceLandmarker = await visionTasks.FaceLandmarker.createFromOptions(fileset, {
+        baseOptions: {modelAssetPath: FACE_MODEL},
+        runningMode: 'VIDEO',
+        numFaces: 1,
+        minFaceDetectionConfidence: .38,
+        minFacePresenceConfidence: .38,
+        minTrackingConfidence: .38,
+        outputFaceBlendshapes: false,
+        outputFacialTransformationMatrixes: false
+      });
+    }
+    if (!handLandmarker) {
+      handLandmarker = await visionTasks.HandLandmarker.createFromOptions(fileset, {
+        baseOptions: {modelAssetPath: HAND_MODEL},
+        runningMode: 'VIDEO',
+        numHands: 2,
+        minHandDetectionConfidence: .36,
+        minHandPresenceConfidence: .36,
+        minTrackingConfidence: .36
+      });
+    }
+    return {faceLandmarker, handLandmarker};
   }
 
   async function setHeadTracking(enabled) {
@@ -392,114 +442,202 @@
     headTrackToggle.textContent = 'LOADING MODEL…';
     headTrackStatus.textContent = 'LOADING';
     try {
-      await ensureFaceDetector();
+      await ensureTrackingModels();
       headTracking = true;
       headTrackingLoading = false;
       lastHeadDetectionAt = -Infinity;
       lastHeadVideoTime = -1;
       headTrackToggle.classList.add('live');
-      headTrackToggle.textContent = 'TRACK HEAD: LIVE';
+      headTrackToggle.textContent = 'TRACK FACE + HANDS: LIVE';
       headTrackStatus.textContent = 'SEARCHING';
     } catch (error) {
       console.error('Head tracker:', error);
       stopHeadTracking('MODEL ERROR', true);
-      headTrackToggle.textContent = 'RETRY TRACK HEAD';
+      headTrackToggle.textContent = 'RETRY TRACKING';
+    }
+  }
+
+  function videoCoverTransform() {
+    const sourceWidth = Math.max(1, video.videoWidth);
+    const sourceHeight = Math.max(1, video.videoHeight);
+    const scale = Math.max(W / sourceWidth, H / sourceHeight);
+    return {
+      scale,
+      offsetX: (W - sourceWidth * scale) * .5,
+      offsetY: (H - sourceHeight * scale) * .5
+    };
+  }
+
+  function landmarkToStage(point) {
+    const transform = videoCoverTransform();
+    return {
+      x: transform.offsetX + point.x * video.videoWidth * transform.scale,
+      y: transform.offsetY + point.y * video.videoHeight * transform.scale
+    };
+  }
+
+  function regionFromLandmarks(landmarks, indices, label, padding = .18, minSize = 16) {
+    const points = indices
+      .map(index => landmarks[index])
+      .filter(Boolean)
+      .map(landmarkToStage);
+    if (!points.length) return null;
+    const minX = Math.min(...points.map(point => point.x));
+    const maxX = Math.max(...points.map(point => point.x));
+    const minY = Math.min(...points.map(point => point.y));
+    const maxY = Math.max(...points.map(point => point.y));
+    const rawWidth = Math.max(minSize, maxX - minX);
+    const rawHeight = Math.max(minSize, maxY - minY);
+    const pad = Math.max(rawWidth, rawHeight) * padding;
+    return {
+      label,
+      x: (minX + maxX) * .5 - rawWidth * .5 - pad,
+      y: (minY + maxY) * .5 - rawHeight * .5 - pad,
+      width: rawWidth + pad * 2,
+      height: rawHeight + pad * 2,
+      alpha: 1,
+      seen: true
+    };
+  }
+
+  function updateTrackedRegion(key, next) {
+    if (!next) return;
+    const previous = trackedRegions[key];
+    if (!previous) trackedRegions[key] = next;
+    else {
+      const smoothing = key === 'HEAD' ? .34 : .42;
+      previous.x = lerp(previous.x, next.x, smoothing);
+      previous.y = lerp(previous.y, next.y, smoothing);
+      previous.width = lerp(previous.width, next.width, smoothing);
+      previous.height = lerp(previous.height, next.height, smoothing);
+      previous.alpha = lerp(previous.alpha, 1, .46);
+      previous.seen = true;
     }
   }
 
   function updateHeadTracking(now) {
-    if (!headTracking || !faceDetector || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
-    if (now - lastHeadDetectionAt < 82) return;
+    if (!headTracking || !faceLandmarker || !handLandmarker || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
+    if (now - lastHeadDetectionAt < 96) return;
     if (video.paused && video.currentTime === lastHeadVideoTime) return;
     lastHeadDetectionAt = now;
     lastHeadVideoTime = video.currentTime;
 
     try {
-      const result = faceDetector.detectForVideo(video, now);
-      const detections = result && Array.isArray(result.detections) ? result.detections : [];
-      if (!detections.length) {
-        trackedHeadAlpha *= .84;
-        if (now - lastHeadSeenAt > 550) headTrackStatus.textContent = 'SEARCHING';
-        return;
+      for (const region of Object.values(trackedRegions)) region.seen = false;
+      const faceResult = faceLandmarker.detectForVideo(video, now);
+      const handResult = handLandmarker.detectForVideo(video, now);
+      const face = faceResult && faceResult.faceLandmarks && faceResult.faceLandmarks[0];
+      const hands = handResult && Array.isArray(handResult.landmarks) ? handResult.landmarks : [];
+
+      if (face) {
+        const allFaceIndices = Array.from({length: face.length}, (_, index) => index);
+        updateTrackedRegion('HEAD', regionFromLandmarks(face, allFaceIndices, 'HEAD', .09, 50));
+        updateTrackedRegion('EYE L', regionFromLandmarks(face, [33, 133, 159, 145, 468, 469, 470, 471, 472], 'EYE L', .28, 13));
+        updateTrackedRegion('EYE R', regionFromLandmarks(face, [362, 263, 386, 374, 473, 474, 475, 476, 477], 'EYE R', .28, 13));
+        updateTrackedRegion('EAR L', regionFromLandmarks(face, [21, 54, 127, 234], 'EAR L', .32, 18));
+        updateTrackedRegion('EAR R', regionFromLandmarks(face, [251, 284, 356, 454], 'EAR R', .32, 18));
+        updateTrackedRegion('NOSE', regionFromLandmarks(face, [1, 2, 4, 5, 98, 327, 168], 'NOSE', .28, 14));
+        updateTrackedRegion('MOUTH', regionFromLandmarks(face, [0, 13, 14, 17, 61, 78, 291, 308], 'MOUTH', .24, 16));
       }
 
-      const detection = detections.reduce((best, item) => {
-        const box = item.boundingBox || {};
-        const bestBox = best.boundingBox || {};
-        return (box.width || 0) * (box.height || 0) > (bestBox.width || 0) * (bestBox.height || 0) ? item : best;
+      const previousHands = new Map(trackedHands.map(hand => [hand.key, hand]));
+      trackedHands = hands.map((landmarks, index) => {
+        const category = handResult.handednesses && handResult.handednesses[index] && handResult.handednesses[index][0];
+        const side = String(category && (category.categoryName || category.displayName) || index + 1).toUpperCase();
+        const key = `HAND ${side}`;
+        const points = landmarks.map(landmarkToStage);
+        const previous = previousHands.get(key);
+        const smoothedPoints = previous && previous.points.length === points.length
+          ? points.map((point, pointIndex) => ({
+              x: lerp(previous.points[pointIndex].x, point.x, .46),
+              y: lerp(previous.points[pointIndex].y, point.y, .46)
+            }))
+          : points;
+        updateTrackedRegion(key, regionFromLandmarks(landmarks, landmarks.map((_, landmarkIndex) => landmarkIndex), key, .12, 28));
+        return {key, points: smoothedPoints, alpha: 1};
       });
-      const box = detection.boundingBox;
-      if (!box) return;
 
-      const sourceWidth = video.videoWidth;
-      const sourceHeight = video.videoHeight;
-      const coverScale = Math.max(W / sourceWidth, H / sourceHeight);
-      const offsetX = (W - sourceWidth * coverScale) * .5;
-      const offsetY = (H - sourceHeight * coverScale) * .5;
-      const originX = box.originX ?? box.origin_x ?? 0;
-      const originY = box.originY ?? box.origin_y ?? 0;
-      const rawWidth = (box.width || 0) * coverScale;
-      const rawHeight = (box.height || 0) * coverScale;
-      const centreX = offsetX + (originX + (box.width || 0) * .5) * coverScale;
-      const centreY = offsetY + (originY + (box.height || 0) * .43) * coverScale;
-      const squareSize = Math.max(rawWidth, rawHeight) * 1.48;
-      const target = {
-        x: clamp(centreX - squareSize * .5, -squareSize * .15, W - squareSize * .85),
-        y: clamp(centreY - squareSize * .5, -squareSize * .15, H - squareSize * .85),
-        size: squareSize
-      };
-
-      if (!trackedHead) trackedHead = target;
-      else {
-        const smoothing = .32;
-        trackedHead.x = lerp(trackedHead.x, target.x, smoothing);
-        trackedHead.y = lerp(trackedHead.y, target.y, smoothing);
-        trackedHead.size = lerp(trackedHead.size, target.size, smoothing);
+      for (const [key, region] of Object.entries(trackedRegions)) {
+        if (!region.seen) region.alpha *= .68;
+        if (region.alpha < .025) delete trackedRegions[key];
       }
-      trackedHeadAlpha = lerp(trackedHeadAlpha, 1, .36);
-      lastHeadSeenAt = now;
-      headDetectionConfidence = detection.categories && detection.categories[0] ? detection.categories[0].score || 0 : 0;
-      headTrackStatus.textContent = `LOCK ${Math.round(headDetectionConfidence * 100)}%`;
+
+      if (face || hands.length) lastHeadSeenAt = now;
+      headTrackStatus.textContent = face || hands.length ? `FACE ${face ? 1 : 0} • HANDS ${hands.length}` : 'SEARCHING';
+      if (!face && !hands.length && now - lastHeadSeenAt > 550) headTrackStatus.textContent = 'SEARCHING';
     } catch (error) {
       console.error('Head tracking frame:', error);
-      stopHeadTracking(/cors|security|taint/i.test(String(error)) ? 'CORS BLOCKED' : 'TRACK ERROR', true);
-      headTrackToggle.textContent = 'RETRY TRACK HEAD';
+      stopHeadTracking('TRACK ERROR', true);
+      headTrackToggle.textContent = 'RETRY TRACKING';
     }
   }
 
-  function drawTrackedHead(reactive = audioMetrics) {
-    if (!headTracking || !trackedHead || trackedHeadAlpha < .01) return;
-    const x = trackedHead.x;
-    const y = trackedHead.y;
-    const size = trackedHead.size;
-    const corner = size * .19;
-    const lineWidth = clamp(size * .022, 2, 6) * (1 + reactive.peak * .35);
+  const HAND_CONNECTIONS = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+
+  function drawTrackingBox(region, reactive, major = false) {
+    const {x, y, width, height, label} = region;
+    const corner = Math.min(width, height) * (major ? .18 : .3);
+    const lineWidth = clamp(Math.min(width, height) * (major ? .018 : .035), 1.2, major ? 5 : 3) * (1 + reactive.peak * .3);
     ctx.save();
-    ctx.globalAlpha = trackedHeadAlpha;
+    ctx.globalAlpha = region.alpha;
     ctx.strokeStyle = ORANGE;
     ctx.fillStyle = ORANGE;
     ctx.lineWidth = Math.max(1, lineWidth * .34);
-    ctx.strokeRect(x, y, size, size);
+    if (major) ctx.strokeRect(x, y, width, height);
     ctx.lineWidth = lineWidth;
     ctx.lineCap = 'square';
     ctx.shadowColor = ORANGE;
-    ctx.shadowBlur = 7 + reactive.peak * 10;
+    ctx.shadowBlur = major ? 7 + reactive.peak * 10 : 3 + reactive.peak * 6;
     ctx.beginPath();
     ctx.moveTo(x, y + corner); ctx.lineTo(x, y); ctx.lineTo(x + corner, y);
-    ctx.moveTo(x + size - corner, y); ctx.lineTo(x + size, y); ctx.lineTo(x + size, y + corner);
-    ctx.moveTo(x, y + size - corner); ctx.lineTo(x, y + size); ctx.lineTo(x + corner, y + size);
-    ctx.moveTo(x + size - corner, y + size); ctx.lineTo(x + size, y + size); ctx.lineTo(x + size, y + size - corner);
+    ctx.moveTo(x + width - corner, y); ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + corner);
+    ctx.moveTo(x, y + height - corner); ctx.lineTo(x, y + height); ctx.lineTo(x + corner, y + height);
+    ctx.moveTo(x + width - corner, y + height); ctx.lineTo(x + width, y + height); ctx.lineTo(x + width, y + height - corner);
     ctx.stroke();
 
-    const labelHeight = clamp(size * .13, 18, 32);
-    const labelWidth = clamp(size * .55, 82, 150);
+    const labelHeight = major ? clamp(height * .11, 17, 30) : clamp(height * .38, 12, 19);
+    const labelWidth = major ? clamp(width * .48, 92, 150) : clamp(label.length * 7 + 13, 48, 92);
     ctx.shadowBlur = 0;
     ctx.fillRect(x, y - labelHeight, labelWidth, labelHeight);
     ctx.fillStyle = '#111';
-    ctx.font = `800 ${clamp(labelHeight * .48, 9, 14)}px Arial, sans-serif`;
+    ctx.font = `800 ${clamp(labelHeight * .5, 7, 13)}px Arial, sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`HEAD 01  ${Math.round(headDetectionConfidence * 100)}%`, x + 7, y - labelHeight * .5);
+    ctx.fillText(major ? `${label} / LOCK` : label, x + 6, y - labelHeight * .5);
+    ctx.restore();
+  }
+
+  function drawTrackedFeatures(reactive = audioMetrics) {
+    if (!headTracking) return;
+    const now = performance.now();
+    for (const region of Object.values(trackedRegions)) {
+      if (now - lastHeadSeenAt > 180) region.alpha *= .97;
+      if (region.alpha > .015) drawTrackingBox(region, reactive, region.label === 'HEAD');
+    }
+
+    ctx.save();
+    ctx.strokeStyle = PALE_ORANGE;
+    ctx.fillStyle = ORANGE;
+    ctx.lineWidth = clamp(Math.min(W, H) * .0022, 1.4, 3.4);
+    ctx.shadowColor = ORANGE;
+    ctx.shadowBlur = 5 + reactive.peak * 7;
+    for (const hand of trackedHands) {
+      ctx.globalAlpha = hand.alpha * (.54 + reactive.peak * .28);
+      ctx.beginPath();
+      for (const [from, to] of HAND_CONNECTIONS) {
+        const a = hand.points[from];
+        const b = hand.points[to];
+        if (!a || !b) continue;
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+      }
+      ctx.stroke();
+      for (const point of hand.points) {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 2.2 + reactive.peak * 1.8, 0, TAU);
+        ctx.fill();
+      }
+    }
     ctx.restore();
   }
 
@@ -526,6 +664,8 @@
       audioSource = audioContext.createMediaElementSource(video);
       audioSource.connect(analyser);
       analyser.connect(audioContext.destination);
+      recordingDestination = audioContext.createMediaStreamDestination();
+      analyser.connect(recordingDestination);
       frequencyData = new Uint8Array(analyser.frequencyBinCount);
       previousFrequencyData = new Uint8Array(analyser.frequencyBinCount);
     }
@@ -597,7 +737,7 @@
     if (now - lastStatusAt > 140) {
       lastStatusAt = now;
       if (noSignalSince && now - noSignalSince > 2600) {
-        audioStatus.textContent = 'Нет сигнала / CORS';
+        audioStatus.textContent = 'Нет аудиосигнала';
         audioToggle.classList.add('error');
       } else {
         const level = Math.round(fastEnergy * 100);
@@ -632,6 +772,159 @@
       audioToggle.classList.add('error');
       audioToggle.textContent = 'AUDIO ERROR';
       audioStatus.textContent = error.message || 'Ошибка аудио';
+    }
+  }
+
+  function recordingMimeType() {
+    if (!window.MediaRecorder) return '';
+    const candidates = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+      'video/mp4;codecs=h264,aac',
+      'video/mp4'
+    ];
+    if (typeof MediaRecorder.isTypeSupported !== 'function') return '';
+    return candidates.find(type => MediaRecorder.isTypeSupported(type)) || '';
+  }
+
+  function drawCompositeFrame() {
+    if (!exportCanvas.width || !exportCanvas.height) return;
+    exportCtx.setTransform(1, 0, 0, 1, 0, 0);
+    exportCtx.fillStyle = '#111';
+    exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    if (video.readyState >= 2 && video.videoWidth && video.videoHeight) {
+      const targetAspect = exportCanvas.width / exportCanvas.height;
+      const sourceAspect = video.videoWidth / video.videoHeight;
+      let sx = 0;
+      let sy = 0;
+      let sw = video.videoWidth;
+      let sh = video.videoHeight;
+      if (sourceAspect > targetAspect) {
+        sw = video.videoHeight * targetAspect;
+        sx = (video.videoWidth - sw) * .5;
+      } else {
+        sh = video.videoWidth / targetAspect;
+        sy = (video.videoHeight - sh) * .5;
+      }
+      exportCtx.drawImage(video, sx, sy, sw, sh, 0, 0, exportCanvas.width, exportCanvas.height);
+    }
+    exportCtx.drawImage(canvas, 0, 0, exportCanvas.width, exportCanvas.height);
+  }
+
+  function formatClock(seconds) {
+    const safe = Math.max(0, Number(seconds) || 0);
+    const minutes = Math.floor(safe / 60);
+    const rest = Math.floor(safe % 60);
+    return `${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
+  }
+
+  function resetRecordUi(message = 'READY') {
+    recordButton.classList.remove('live');
+    recordButton.classList.add('ready');
+    recordButton.textContent = 'EXPORT FULL VIDEO';
+    recordStatus.textContent = message;
+  }
+
+  function finishRecording(mimeType) {
+    const reachedEnd = video.ended || (video.duration && video.currentTime >= video.duration - .08);
+    video.loop = recordingPreviousLoop;
+    video.removeEventListener('ended', stopRecording);
+    if (recordingStream) {
+      recordingStream.getVideoTracks().forEach(track => track.stop());
+      recordingStream = null;
+    }
+    const blob = new Blob(recordedChunks, {type: mimeType || 'video/webm'});
+    recordedChunks = [];
+    mediaRecorder = null;
+    if (!blob.size) {
+      resetRecordUi('EMPTY');
+      recordButton.classList.remove('ready');
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const extension = blob.type.includes('mp4') ? 'mp4' : 'webm';
+    link.download = `${recordingFileStem}-effects.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    resetRecordUi(`${formatBytes(blob.size)} SAVED`);
+    if (reachedEnd) {
+      video.currentTime = 0;
+      video.play().catch(() => {});
+    }
+  }
+
+  function stopRecording() {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+    recordButton.textContent = 'FINALIZING…';
+    recordStatus.textContent = 'ENCODING';
+    mediaRecorder.stop();
+  }
+
+  async function seekVideoStart() {
+    if (!video.duration || video.currentTime < .03) return;
+    await new Promise(resolve => {
+      const timeout = setTimeout(resolve, 1800);
+      video.addEventListener('seeked', () => {
+        clearTimeout(timeout);
+        resolve();
+      }, {once: true});
+      video.currentTime = 0;
+    });
+  }
+
+  async function startRecording() {
+    if (!currentObjectUrl || video.readyState < 2) {
+      recordStatus.textContent = 'LOAD VIDEO';
+      return;
+    }
+    if (!window.MediaRecorder || typeof exportCanvas.captureStream !== 'function') {
+      recordStatus.textContent = 'NOT SUPPORTED';
+      return;
+    }
+    const mimeType = recordingMimeType();
+    try {
+      await setAudioReactive(true);
+      video.pause();
+      await seekVideoStart();
+      drawCompositeFrame();
+
+      recordingPreviousLoop = video.loop;
+      recordingFileStem = currentFileStem;
+      video.loop = false;
+      recordingStream = exportCanvas.captureStream(30);
+      const tracks = [...recordingStream.getVideoTracks()];
+      if (recordingDestination) tracks.push(...recordingDestination.stream.getAudioTracks());
+      const stream = new MediaStream(tracks);
+      mediaRecorder = mimeType ? new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: 8_000_000
+      }) : new MediaRecorder(stream);
+      recordedChunks = [];
+      mediaRecorder.ondataavailable = event => {
+        if (event.data && event.data.size) recordedChunks.push(event.data);
+      };
+      mediaRecorder.onerror = event => {
+        console.error('MediaRecorder:', event.error || event);
+        resetRecordUi('RECORD ERROR');
+      };
+      mediaRecorder.onstop = () => finishRecording(mediaRecorder && mediaRecorder.mimeType || mimeType);
+      video.addEventListener('ended', stopRecording, {once: true});
+      mediaRecorder.start(1000);
+      recordingStartedAt = performance.now();
+      recordButton.classList.remove('ready');
+      recordButton.classList.add('live');
+      recordButton.textContent = 'STOP & SAVE';
+      recordStatus.textContent = 'REC 00:00';
+      await video.play();
+    } catch (error) {
+      console.error('Export:', error);
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      else resetRecordUi('EXPORT ERROR');
     }
   }
 
@@ -796,6 +1089,8 @@
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(W * DPR);
     canvas.height = Math.round(H * DPR);
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     rebuild();
   }
@@ -808,53 +1103,39 @@
 
   function modeWeights(t) {
     const selected = modeEl.value;
+    const weights = Object.fromEntries(EFFECT_SEQUENCE.map(key => [key, 0]));
     if (selected !== 'sequence') {
-      return {
-        titleCard: selected === 'title-card' ? 1 : 0,
-        checkerFloor: selected === 'checker-floor' ? 1 : 0,
-        dashRain: selected === 'dash-rain' ? 1 : 0,
-        rectangles: selected === 'rectangles' ? 1 : 0,
-        weatherHud: selected === 'weather-hud' ? 1 : 0,
-        doodles: selected === 'doodles' ? 1 : 0,
-        asterisks: selected === 'asterisks' ? 1 : 0,
-        textCollage: selected === 'text-collage' ? 1 : 0,
-        credits: selected === 'credits' ? 1 : 0,
-        signature: selected === 'signature' ? 1 : 0,
-        tracking: selected === 'tracking' ? 1 : 0,
-        endCard: selected === 'end-card' ? 1 : 0,
-        plusDiscs: selected === 'plus-discs' ? 1 : 0,
-        dots: selected === 'dots' ? 1 : 0,
-        pluses: selected === 'pluses' ? 1 : 0,
-        arcs: selected === 'arcs' ? 1 : 0
+      const modeKey = {
+        'title-card': 'titleCard',
+        'checker-floor': 'checkerFloor',
+        'dash-rain': 'dashRain',
+        rectangles: 'rectangles',
+        'weather-hud': 'weatherHud',
+        doodles: 'doodles',
+        geometry: 'geometry',
+        'text-collage': 'textCollage',
+        credits: 'credits',
+        signature: 'signature',
+        tracking: 'tracking',
+        'end-card': 'endCard',
+        'plus-discs': 'plusDiscs',
+        dots: 'dots',
+        pluses: 'pluses',
+        arcs: 'arcs'
       };
+      if (modeKey[selected]) weights[modeKey[selected]] = 1;
+      return weights;
     }
 
     const local = ((t % SEQUENCE_SECONDS) + SEQUENCE_SECONDS) % SEQUENCE_SECONDS;
-    const envelope = (start, end, fade = .65) => {
-      const fadeIn = smoothstep(start, start + fade, local);
-      const fadeOut = 1 - smoothstep(end - fade, end, local);
-      return local >= start && local <= end ? fadeIn * fadeOut : 0;
-    };
-    const windows = (...items) => Math.max(0, ...items.map(item => envelope(...item)));
-
-    return {
-      titleCard: windows([0, 3.4, .35], [104, 107.2, .22]),
-      plusDiscs: envelope(2.7, 7.5, .5),
-      pluses: windows([3, 8.6, .55], [112.5, 121.5, .65], [145, 152, .6]),
-      tracking: windows([6.5, 18.2, .65], [96, 104, .55]),
-      arcs: envelope(7.5, 18.2, .7),
-      checkerFloor: envelope(17.2, 24.8, .55),
-      dashRain: windows([20, 29.5, .55], [145, 151.8, .45]),
-      rectangles: envelope(28.5, 44, .65),
-      weatherHud: envelope(43, 55.5, .7),
-      doodles: envelope(54, 70.5, .7),
-      asterisks: windows([63, 76.5, .65], [98, 104.5, .55]),
-      textCollage: envelope(73.5, 84.5, .7),
-      credits: windows([83.5, 98, .7], [134, 145.5, .65]),
-      signature: windows([86.5, 94.5, .55], [107, 113.5, .55]),
-      dots: envelope(117, 135.5, .75),
-      endCard: envelope(153, 158, .45)
-    };
+    const sceneIndex = Math.floor(local / SCENE_SECONDS);
+    const sceneTime = local - sceneIndex * SCENE_SECONDS;
+    const transition = smoothstep(SCENE_SECONDS - .9, SCENE_SECONDS, sceneTime);
+    const currentKey = EFFECT_SEQUENCE[sceneIndex];
+    const nextKey = EFFECT_SEQUENCE[(sceneIndex + 1) % EFFECT_SEQUENCE.length];
+    weights[currentKey] = 1 - transition;
+    weights[nextKey] = transition;
+    return weights;
   }
 
   function groupPosition(index, t) {
@@ -1118,52 +1399,68 @@
     ctx.restore();
   }
 
-  function drawAsterisk(x, y, size, angle, alpha) {
+  function drawGeometry(t, opacity, chaos, reactive = audioMetrics) {
+    const limit = clamp(Math.round(amountEl.value * .18), 18, 52);
+    const disorder = Math.pow(chaos, 1.25);
     ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-    ctx.globalAlpha = alpha;
     ctx.strokeStyle = ORANGE;
-    ctx.lineWidth = clamp(size * .13, 1, 3);
-    ctx.lineCap = 'square';
-    for (let spoke = 0; spoke < 3; spoke++) {
-      const a = spoke * Math.PI / 3;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * -size * .5, Math.sin(a) * -size * .5);
-      ctx.lineTo(Math.cos(a) * size * .5, Math.sin(a) * size * .5);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  function drawAsteriskGeometry(t, opacity, chaos, reactive = audioMetrics) {
-    const limit = clamp(Math.round(amountEl.value * .52), 34, pluses.length);
+    ctx.fillStyle = ORANGE;
+    ctx.lineWidth = clamp(Math.min(W, H) * .0021, 1.2, 3.6);
     for (let index = 0; index < limit; index++) {
-      const particle = pluses[index];
-      const pos = particlePosition(particle, t * .72, chaos);
-      const size = particle.size * (1.05 + reactive.peak * .35);
-      drawAsterisk(pos.x, pos.y, size, particle.phase + t * .08 * chaos, particle.alpha * opacity * .82);
+      const particle = pluses[index % pluses.length];
+      const pos = particlePosition(particle, t * (.5 + index % 4 * .08), chaos);
+      const pulse = 1 + Math.sin(t * (1.1 + index % 5 * .13) + particle.phase) * (.08 + disorder * .17) + reactive.peak * .24;
+      const size = clamp(particle.size * 1.8 * pulse, 8, 58);
+      ctx.save();
+      ctx.translate(pos.x, pos.y);
+      ctx.rotate(particle.phase + t * (.08 + disorder * .34) * (index % 2 ? 1 : -1));
+      ctx.globalAlpha = particle.alpha * opacity * (.42 + reactive.peak * .28);
+      const type = index % 5;
+      if (type === 0) {
+        ctx.strokeRect(-size * .65, -size * .32, size * 1.3, size * .64);
+      } else if (type === 1) {
+        ctx.beginPath();
+        ctx.arc(0, 0, size * .48, 0, TAU);
+        ctx.stroke();
+      } else if (type === 2) {
+        ctx.beginPath();
+        ctx.moveTo(0, -size * .62);
+        ctx.lineTo(size * .58, size * .48);
+        ctx.lineTo(-size * .58, size * .48);
+        ctx.closePath();
+        ctx.stroke();
+      } else if (type === 3) {
+        ctx.fillRect(-size * .5, -size * .08, size, size * .16);
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(-size * .62, -size * .4);
+        ctx.lineTo(size * .62, size * .4);
+        ctx.moveTo(-size * .62, size * .4);
+        ctx.lineTo(size * .62, -size * .4);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
-    const centreX = W * .51;
-    const centreY = H * .34;
-    ctx.save();
-    ctx.fillStyle = ORANGE;
-    ctx.globalAlpha = opacity * (.46 + reactive.peak * .22);
-    ctx.fillRect(centreX, centreY, W * .038, H * .31);
-    ctx.fillRect(centreX - W * .047, centreY + H * .055, W * .09, H * .075);
-    ctx.beginPath(); ctx.arc(centreX - W * .045, centreY + H * .1, clamp(Math.min(W, H) * .055, 22, 52), 0, TAU); ctx.fill();
-    ctx.globalAlpha = opacity * .27;
-    ctx.fillRect(centreX + W * .015, centreY - H * .055, W * .038, H * .095);
-    ctx.restore();
-
-    ctx.save();
-    ctx.globalAlpha = opacity * .72;
-    ctx.fillStyle = ORANGE;
-    ctx.font = `500 ${clamp(Math.min(W, H) * .02, 12, 22)}px Arial, sans-serif`;
-    ctx.fillText('member', W * .53, H * .3);
-    ctx.fillText('headache', W * .17, H * .64);
-    ctx.fillText('signal.mp3 playing', W * .65, H * .54);
+    const centreX = W * (.5 + Math.sin(t * .19) * .035 * disorder);
+    const centreY = H * (.48 + Math.cos(t * .17) * .04 * disorder);
+    const unit = clamp(Math.min(W, H) * (.12 + reactive.bass * .035), 54, 150);
+    ctx.translate(centreX, centreY);
+    ctx.rotate(Math.sin(t * .27) * .2 + t * .025 * chaos);
+    ctx.globalAlpha = opacity * (.48 + reactive.peak * .25);
+    ctx.lineWidth = clamp(unit * .025, 2, 6);
+    ctx.strokeRect(-unit * 1.25, -unit * .72, unit * 2.5, unit * 1.44);
+    ctx.beginPath();
+    ctx.arc(0, 0, unit * .54, t * .18, t * .18 + Math.PI * 1.55);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-unit * 1.55, 0);
+    ctx.lineTo(unit * 1.55, 0);
+    ctx.moveTo(0, -unit * 1.02);
+    ctx.lineTo(0, unit * 1.02);
+    ctx.stroke();
+    ctx.globalAlpha = opacity * (.2 + reactive.mid * .22);
+    ctx.fillRect(-unit * .14, -unit * 1.08, unit * .28, unit * 2.16);
     ctx.restore();
   }
 
@@ -1194,7 +1491,7 @@
   ];
 
   function drawCreditsCross(t, opacity, reactive = audioMetrics) {
-    const finalCredits = wrap(t, 0, SEQUENCE_SECONDS) > 125;
+    const finalCredits = Math.sin(t * .55) > .22;
     const fontSize = clamp(Math.min(W, H) * (finalCredits ? .018 : .015), 10, 19);
     ctx.save();
     ctx.fillStyle = ORANGE;
@@ -1460,7 +1757,7 @@
     }
     if (weights.weatherHud * sceneGate > .001) drawWeatherHud(t, weights.weatherHud * sceneGate, chaos, reactive);
     if (weights.doodles * sceneGate > .001) drawDoodles(t, weights.doodles * sceneGate, chaos, reactive);
-    if (weights.asterisks * sceneGate > .001) drawAsteriskGeometry(t, weights.asterisks * sceneGate, chaos, reactive);
+    if (weights.geometry * sceneGate > .001) drawGeometry(t, weights.geometry * sceneGate, chaos, reactive);
     if (weights.textCollage * sceneGate > .001) {
       drawTextCollage(t, weights.textCollage * sceneGate, chaos, reactive);
     }
@@ -1475,7 +1772,11 @@
     if (weights.pluses * sceneGate > .001) drawPlusField(t + 2.1, weights.pluses * sceneGate, chaos, .62, reactive);
     if (weights.arcs * sceneGate > .001) drawArcs(t, weights.arcs * sceneGate, chaos, reactive);
     if (weights.endCard * sceneGate > .001) drawEndCard(t, weights.endCard * sceneGate, reactive);
-    drawTrackedHead(reactive);
+    drawTrackedFeatures(reactive);
+    drawCompositeFrame();
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      recordStatus.textContent = `REC ${formatClock((now - recordingStartedAt) * .001)} / ${formatClock(video.duration)}`;
+    }
 
     requestAnimationFrame(render);
   }
@@ -1503,6 +1804,7 @@
   });
 
   async function loadVideoSource(source) {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') stopRecording();
     stopHeadTracking();
     audioReactive = false;
     audioToggle.classList.remove('live', 'error');
@@ -1546,10 +1848,17 @@
       }
       currentObjectUrl = nextObjectUrl;
       if (previousObjectUrl) URL.revokeObjectURL(previousObjectUrl);
+      currentFileStem = String(file.name || 'effects-export')
+        .replace(/\.[^.]+$/, '')
+        .replace(/[^a-zа-яё0-9_-]+/gi, '-')
+        .replace(/^-+|-+$/g, '') || 'effects-export';
       fileName.textContent = `${file.name} · ${formatBytes(file.size)}`;
       fileName.title = file.name;
       fileDrop.hidden = true;
+      recordButton.disabled = false;
+      resetRecordUi();
       hideMediaLoader();
+      await setAudioReactive(true);
     } catch (error) {
       URL.revokeObjectURL(nextObjectUrl);
       if (token !== activeLoadToken) return;
@@ -1579,7 +1888,9 @@
     }
     fileName.textContent = `${file.name} · ${formatBytes(file.size)}`;
     fileName.title = file.name;
+    const audioWarmup = prepareAudio().catch(error => error);
     await loadLocalFile(file);
+    await audioWarmup;
   }
 
   const openFilePicker = () => videoFile.click();
@@ -1626,6 +1937,10 @@
 
   audioToggle.addEventListener('click', () => setAudioReactive(!audioReactive));
   headTrackToggle.addEventListener('click', () => setHeadTracking(!headTracking));
+  recordButton.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') stopRecording();
+    else startRecording();
+  });
 
   document.addEventListener('keydown', event => {
     if (event.key.toLowerCase() === 'm' && event.target.tagName !== 'INPUT') menuButton.click();
