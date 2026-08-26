@@ -121,7 +121,7 @@
   <div class="row">
     <div class="label"><span>Режим</span><span class="value" id="modeValue">Auto sequence</span></div>
     <select id="mode">
-      <option value="sequence">Auto sequence — all effects</option>
+      <option value="sequence">Auto sequence — reference timeline</option>
       <option value="title-card">Orange title card</option>
       <option value="checker-floor">Perspective checker</option>
       <option value="dash-rain">Falling dashes</option>
@@ -138,20 +138,20 @@
       <option value="dots">Dots / sparks</option>
       <option value="pluses">Plus field</option>
     </select>
-    <div class="hint">Auto sequence циклически меняет все типы эффектов и синхронизирован со временем видео.</div>
+    <div class="hint">Auto sequence повторяет 158-секундный монтажный рисунок референса и сжимает его под длину загруженного видео.</div>
   </div>
 
   <div class="sep"></div>
 
   <div class="row">
-    <div class="label"><span>Количество</span><span class="value" id="amountValue">140</span></div>
-    <input id="amount" type="range" min="24" max="320" value="140">
+    <div class="label"><span>Количество</span><span class="value" id="amountValue">88</span></div>
+    <input id="amount" type="range" min="24" max="320" value="88">
     <div class="ends"><span>24</span><span>320</span></div>
   </div>
 
   <div class="row">
-    <div class="label"><span>Хаос</span><span class="value" id="chaosValue">34%</span></div>
-    <input id="chaos" type="range" min="0" max="100" value="34">
+    <div class="label"><span>Хаос</span><span class="value" id="chaosValue">22%</span></div>
+    <input id="chaos" type="range" min="0" max="100" value="22">
     <div class="ends"><span>порядок</span><span>рандом</span></div>
   </div>
 
@@ -236,8 +236,26 @@
     'rectangles', 'weatherHud', 'doodles', 'geometry', 'textCollage', 'credits',
     'signature', 'dots', 'pluses', 'endCard'
   ];
-  const SCENE_SECONDS = 5.2;
-  const SEQUENCE_SECONDS = EFFECT_SEQUENCE.length * SCENE_SECONDS;
+  const REFERENCE_SECONDS = 158.661;
+  const REFERENCE_TIMELINE = [
+    [0,   15,  {pluses: .48, dots: .3, tracking: .2}],
+    [15,  22,  {checkerFloor: 1, dashRain: .62, pluses: .18}],
+    [22,  30,  {dashRain: .82, tracking: .34, textCollage: .14}],
+    [30,  40,  {rectangles: 1, plusDiscs: .36, tracking: .28, dots: .28}],
+    [40,  56,  {weatherHud: 1, rectangles: .62, pluses: .22, dots: .18}],
+    [56,  58,  {titleCard: 1}],
+    [58,  68,  {doodles: 1}],
+    [68,  78,  {tracking: .48, plusDiscs: .38, dots: .24}],
+    [78,  84,  {dashRain: .6, textCollage: .52}],
+    [84,  96,  {textCollage: 1, rectangles: .2}],
+    [96,  112, {pluses: .52, dots: .3, tracking: .2}],
+    [112, 120, {dashRain: .78, tracking: .28, pluses: .18}],
+    [120, 138, {textCollage: .86, pluses: .3, dots: .22, tracking: .2}],
+    [138, 146, {geometry: .56, plusDiscs: .36, dots: .24}],
+    [146, 152, {credits: .62, signature: .54, tracking: .2}],
+    [152, 157, {geometry: .78, textCollage: .62, dots: .26, pluses: .28}],
+    [157, REFERENCE_SECONDS, {endCard: 1}]
+  ];
   const TEXT_LINES = [
     'гной сосков стекает в отдел аналитики',
     'члены овец проходят плановую инвентаризацию',
@@ -293,6 +311,7 @@
   let frequencyData = null;
   let previousFrequencyData = null;
   let audioReactive = false;
+  let audioAutoPending = true;
   let fastEnergy = 0;
   let averageEnergy = 0;
   let peakEnvelope = 0;
@@ -668,7 +687,12 @@
       frequencyData = new Uint8Array(analyser.frequencyBinCount);
       previousFrequencyData = new Uint8Array(analyser.frequencyBinCount);
     }
-    if (audioContext.state !== 'running') await audioContext.resume();
+    if (audioContext.state !== 'running') {
+      await Promise.race([
+        audioContext.resume(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Нажми AUDIO FX ещё раз')), 1400))
+      ]);
+    }
   }
 
   function bandAverage(fromHz, toHz) {
@@ -749,6 +773,7 @@
 
   async function setAudioReactive(enabled) {
     if (!enabled) {
+      audioAutoPending = false;
       audioReactive = false;
       audioToggle.classList.remove('live', 'error');
       audioToggle.textContent = 'START AUDIO FX';
@@ -756,6 +781,7 @@
       return;
     }
     try {
+      audioAutoPending = false;
       await prepareAudio();
       audioReactive = true;
       video.muted = false;
@@ -806,7 +832,9 @@
         sh = video.videoWidth / targetAspect;
         sy = (video.videoHeight - sh) * .5;
       }
+      exportCtx.filter = video.style.filter || 'none';
       exportCtx.drawImage(video, sx, sy, sw, sh, 0, 0, exportCanvas.width, exportCanvas.height);
+      exportCtx.filter = 'none';
     }
     exportCtx.drawImage(canvas, 0, 0, exportCanvas.width, exportCanvas.height);
   }
@@ -962,9 +990,10 @@
     }
 
     const rectangleLayouts = [
-      [.08, .17, .43, .16,  1, .00, .42, .62, 16],
-      [.18, .38, .34, .115, 1, .27, .70, .58, 13],
-      [.55, .60, .27, .085,-1, .57, 1.00, .52, 11]
+      [-.035, .16, .31, .13,  1, .00, .38, .78, 5],
+      [.08,   .57, .29, .18,  1, .22, .64, .66, 7],
+      [.68,   .14, .26, .42, -1, .38, .78, .68, 6],
+      [.48,   .68, .37, .14, -1, .62, 1.00, .58, 5]
     ];
     roundedRects = rectangleLayouts.map(layout => {
       const [x, y, width, height, direction, slotStart, slotEnd, alpha, radius] = layout;
@@ -1050,7 +1079,12 @@
 
   function effectTime(now) {
     const speed = +speedEl.value / 100;
-    if (Number.isFinite(video.currentTime) && video.readyState >= 1) return video.currentTime * speed;
+    if (Number.isFinite(video.currentTime) && video.readyState >= 1) {
+      if (modeEl.value === 'sequence' && Number.isFinite(video.duration) && video.duration > .05) {
+        return video.currentTime / video.duration * REFERENCE_SECONDS * speed;
+      }
+      return video.currentTime * speed;
+    }
     return (now - fallbackStartedAt) * .001 * speed;
   }
 
@@ -1079,14 +1113,14 @@
       return weights;
     }
 
-    const local = ((t % SEQUENCE_SECONDS) + SEQUENCE_SECONDS) % SEQUENCE_SECONDS;
-    const sceneIndex = Math.floor(local / SCENE_SECONDS);
-    const sceneTime = local - sceneIndex * SCENE_SECONDS;
-    const transition = smoothstep(SCENE_SECONDS - .9, SCENE_SECONDS, sceneTime);
-    const currentKey = EFFECT_SEQUENCE[sceneIndex];
-    const nextKey = EFFECT_SEQUENCE[(sceneIndex + 1) % EFFECT_SEQUENCE.length];
-    weights[currentKey] = 1 - transition;
-    weights[nextKey] = transition;
+    const local = ((t % REFERENCE_SECONDS) + REFERENCE_SECONDS) % REFERENCE_SECONDS;
+    const sceneIndex = Math.max(0, REFERENCE_TIMELINE.findIndex(scene => local >= scene[0] && local < scene[1]));
+    const scene = REFERENCE_TIMELINE[sceneIndex];
+    const nextScene = REFERENCE_TIMELINE[(sceneIndex + 1) % REFERENCE_TIMELINE.length];
+    const transitionWindow = Math.min(.7, (scene[1] - scene[0]) * .16);
+    const transition = smoothstep(scene[1] - transitionWindow, scene[1], local);
+    for (const [key, value] of Object.entries(scene[2])) weights[key] = value * (1 - transition);
+    for (const [key, value] of Object.entries(nextScene[2])) weights[key] = Math.max(weights[key] || 0, value * transition);
     return weights;
   }
 
@@ -1133,55 +1167,52 @@
 
   function drawTitleCard(t, opacity, reactive = audioMetrics) {
     ctx.save();
-    ctx.globalAlpha = opacity * (.94 + reactive.peak * .06);
+    ctx.globalAlpha = opacity * (.97 + reactive.peak * .03);
     ctx.fillStyle = ORANGE;
     ctx.fillRect(0, 0, W, H);
-    ctx.globalAlpha = opacity * (.13 + reactive.peak * .08);
-    ctx.fillStyle = '#ffd07d';
-    ctx.font = `700 ${clamp(Math.min(W, H) * .072, 32, 88)}px Arial, Helvetica, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('сделаем это', W * .5, H * .5 + Math.sin(t * .8) * 2);
     ctx.restore();
   }
 
   function drawTrackingOverlay(t, opacity, chaos, reactive = audioMetrics) {
-    const anchors = [[.18, .32], [.51, .39], [.78, .3], [.66, .68]];
+    const anchors = [[.11, .24], [.26, .68], [.54, .31], [.71, .63], [.89, .28]];
     const jitter = Math.pow(chaos, 1.4);
     ctx.save();
     ctx.strokeStyle = ORANGE;
     ctx.fillStyle = ORANGE;
-    ctx.lineWidth = clamp(Math.min(W, H) * .00135, 1, 2.2);
-    ctx.globalAlpha = opacity * (.34 + reactive.peak * .22);
+    ctx.lineWidth = clamp(Math.min(W, H) * .0011, .8, 1.8);
+    ctx.globalAlpha = opacity * (.32 + reactive.peak * .18);
     for (let index = 0; index < anchors.length; index++) {
       const anchor = anchors[index];
-      const x = anchor[0] * W + Math.sin(t * .55 + index * 1.7) * W * .012 * jitter;
-      const y = anchor[1] * H + Math.cos(t * .48 + index * 1.3) * H * .012 * jitter;
-      const boxW = W * (.07 + index % 2 * .018);
-      const boxH = H * (.12 + (index + 1) % 2 * .035);
-      const cut = Math.min(boxW, boxH) * .23;
+      const x = anchor[0] * W + Math.sin(t * .11 + index * 1.7) * W * .009 * jitter;
+      const y = anchor[1] * H + Math.cos(t * .1 + index * 1.3) * H * .009 * jitter;
+      const marker = clamp(Math.min(W, H) * (.012 + index % 2 * .004), 7, 17);
+      ctx.beginPath();
+      ctx.arc(x, y, marker * .42, 0, TAU);
+      ctx.stroke();
+      drawPlus(x, y, marker * 1.35, 0, opacity * (.38 + reactive.peak * .2));
+      if (index % 2) continue;
+      const boxW = W * (.055 + index * .006);
+      const boxH = H * (.09 + index * .008);
+      const cut = Math.min(boxW, boxH) * .27;
       ctx.beginPath();
       ctx.moveTo(x - boxW * .5, y - boxH * .5 + cut); ctx.lineTo(x - boxW * .5, y - boxH * .5); ctx.lineTo(x - boxW * .5 + cut, y - boxH * .5);
       ctx.moveTo(x + boxW * .5 - cut, y - boxH * .5); ctx.lineTo(x + boxW * .5, y - boxH * .5); ctx.lineTo(x + boxW * .5, y - boxH * .5 + cut);
       ctx.moveTo(x - boxW * .5, y + boxH * .5 - cut); ctx.lineTo(x - boxW * .5, y + boxH * .5); ctx.lineTo(x - boxW * .5 + cut, y + boxH * .5);
       ctx.moveTo(x + boxW * .5 - cut, y + boxH * .5); ctx.lineTo(x + boxW * .5, y + boxH * .5); ctx.lineTo(x + boxW * .5, y + boxH * .5 - cut);
       ctx.stroke();
-      ctx.globalAlpha = opacity * .13;
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-      ctx.globalAlpha = opacity * (.38 + reactive.peak * .25);
-      drawPlus(x, y, clamp(Math.min(W, H) * .016, 8, 18), 0, opacity * .65);
     }
-    ctx.globalAlpha = opacity * .62;
-    ctx.font = `500 ${clamp(Math.min(W, H) * .018, 11, 19)}px Arial, sans-serif`;
-    ctx.fillText('tracking / subject 04', W * .055, H * .88);
-    ctx.fillText('signal locked', W * .76, H * .13);
+    ctx.globalAlpha = opacity * .24;
+    ctx.beginPath();
+    ctx.moveTo(W * .02, H * .74); ctx.lineTo(W * .31, H * .74);
+    ctx.moveTo(W * .68, H * .16); ctx.lineTo(W * .96, H * .16);
+    ctx.stroke();
     ctx.restore();
   }
 
   function drawPerspectiveChecker(t, opacity, chaos, reactive = audioMetrics) {
-    const rows = 11;
-    const columns = 13;
-    const horizon = H * .43;
+    const rows = 10;
+    const columns = 12;
+    const horizon = H * .47;
     const centre = W * .5;
     const disorder = Math.pow(chaos, 1.45);
     ctx.save();
@@ -1191,9 +1222,9 @@
       const d0 = Math.pow(row / rows, 1.72);
       const d1 = Math.pow((row + 1) / rows, 1.72);
       const y0 = lerp(horizon, H * 1.04, d0);
-      const y1 = lerp(horizon, H * 1.04, d1);
-      const half0 = lerp(W * .09, W * .66, d0);
-      const half1 = lerp(W * .09, W * .66, d1);
+      const y1 = lerp(horizon, H * .98, d1);
+      const half0 = lerp(W * .055, W * .43, d0);
+      const half1 = lerp(W * .055, W * .43, d1);
       for (let column = 0; column < columns; column++) {
         if ((row + column) % 2) continue;
         const u0 = column / columns;
@@ -1222,9 +1253,9 @@
       const orderedX = particle.gridX * W;
       const randomX = particle.x * W;
       const x = lerp(orderedX, randomX, chaos) + Math.sin(t * .35 + particle.phase) * 8 * disorder;
-      const speed = 13 + particle.speed * 32 + reactive.peak * 28;
+      const speed = 9 + particle.speed * 22 + reactive.peak * 22;
       const y = wrap(particle.y * H + t * speed + index * 7, -40, H + 40);
-      const length = clamp(particle.radius * (4.5 + reactive.peak * 2.2), 6, 28);
+      const length = clamp(particle.radius * (3.2 + reactive.peak * 1.6), 4, 16);
       ctx.globalAlpha = opacity * particle.alpha * (.45 + reactive.high * .35 + reactive.peak * .25);
       ctx.lineWidth = clamp(particle.radius * .58, 1, 2.8);
       ctx.beginPath();
@@ -1273,34 +1304,53 @@
 
   function drawWeatherHud(t, opacity, chaos, reactive = audioMetrics) {
     const disorder = Math.pow(chaos, 1.35);
-    const pulse = 1 + reactive.peak * .025;
-    const frameX = W * .36 + Math.sin(t * .22) * W * .008 * disorder;
-    const frameY = H * .12;
-    const frameW = W * .51;
-    const frameH = H * .58;
+    const frameX = W * .31 + Math.sin(t * .12) * W * .006 * disorder;
+    const frameY = H * .08;
+    const frameW = W * .5;
+    const frameH = H * .53;
     ctx.save();
     ctx.strokeStyle = ORANGE;
     ctx.fillStyle = ORANGE;
-    ctx.lineWidth = clamp(Math.min(W, H) * .006, 3, 8);
-    ctx.globalAlpha = opacity * (.76 + reactive.peak * .18);
+    if (video.readyState >= 2 && video.videoWidth && video.videoHeight) {
+      const sourceRatio = video.videoWidth / video.videoHeight;
+      const targetRatio = frameW / frameH;
+      let sx = 0;
+      let sy = 0;
+      let sw = video.videoWidth;
+      let sh = video.videoHeight;
+      if (sourceRatio > targetRatio) {
+        sw = sh * targetRatio;
+        sx = (video.videoWidth - sw) * .5;
+      } else {
+        sh = sw / targetRatio;
+        sy = (video.videoHeight - sh) * .5;
+      }
+      ctx.globalAlpha = opacity * .54;
+      ctx.drawImage(video, sx, sy, sw, sh, frameX, frameY, frameW, frameH);
+    }
+    ctx.lineWidth = clamp(Math.min(W, H) * .0032, 2, 4.5);
+    ctx.globalAlpha = opacity * (.72 + reactive.peak * .14);
     ctx.strokeRect(frameX, frameY, frameW, frameH);
 
-    ctx.globalAlpha = opacity * .88;
-    roundedRectanglePath(W * .05, H * .25, W * .24 * pulse, H * .16, clamp(W * .008, 8, 16)); ctx.fill();
-    roundedRectanglePath(W * .72, H * .24, W * .25 * pulse, H * .31, clamp(W * .008, 8, 16)); ctx.fill();
-
-    const iconY = H * .84;
-    const iconStart = W * .34;
-    for (let icon = 0; icon < 6; icon++) drawWeatherIcon(iconStart + icon * W * .103, iconY, clamp(W * .055, 34, 68), icon % 4, opacity * .8);
-
     ctx.globalAlpha = opacity * .72;
-    ctx.font = `500 ${clamp(Math.min(W, H) * .018, 11, 20)}px Arial, sans-serif`;
-    ctx.fillText('thunderstorm in 3', W * .55, H * .31);
+    roundedRectanglePath(W * .02, H * .22, W * .22, H * .12, clamp(W * .004, 3, 7)); ctx.fill();
+    ctx.globalAlpha = opacity * .62;
+    roundedRectanglePath(W * .64, H * .53, W * .31, H * .2, clamp(W * .004, 3, 7)); ctx.fill();
+
+    const iconY = H * .85;
+    const iconStart = W * .28;
+    for (let icon = 0; icon < 7; icon++) {
+      drawWeatherIcon(iconStart + icon * W * .082, iconY, clamp(W * .042, 26, 52), icon % 4, opacity * .76);
+    }
+
+    ctx.globalAlpha = opacity * .44;
+    ctx.font = `500 ${clamp(Math.min(W, H) * .013, 9, 15)}px Arial, sans-serif`;
+    ctx.fillText('weather / movement / 03', W * .66, H * .49);
 
     const personX = W * .91;
     const personY = H * .08;
-    const s = clamp(Math.min(W, H) * .08, 42, 82);
-    ctx.lineWidth = Math.max(2, s * .1);
+    const s = clamp(Math.min(W, H) * .065, 36, 68);
+    ctx.lineWidth = Math.max(1.8, s * .075);
     ctx.beginPath(); ctx.arc(personX, personY, s * .16, 0, TAU); ctx.stroke();
     ctx.beginPath();
     ctx.moveTo(personX, personY + s * .18); ctx.lineTo(personX - s * .04, personY + s * .56);
@@ -1352,85 +1402,86 @@
   }
 
   function drawGeometry(t, opacity, chaos, reactive = audioMetrics) {
-    const limit = clamp(Math.round(amountEl.value * .18), 18, 52);
-    const disorder = Math.pow(chaos, 1.25);
+    const limit = clamp(Math.round(amountEl.value * .42), 24, 104);
+    const disorder = Math.pow(chaos, 1.2);
     ctx.save();
     ctx.strokeStyle = ORANGE;
     ctx.fillStyle = ORANGE;
-    ctx.lineWidth = clamp(Math.min(W, H) * .0021, 1.2, 3.6);
+    ctx.lineCap = 'round';
+    ctx.lineWidth = clamp(Math.min(W, H) * .00145, .9, 2.2);
     for (let index = 0; index < limit; index++) {
       const particle = pluses[index % pluses.length];
-      const pos = particlePosition(particle, t * (.5 + index % 4 * .08), chaos);
-      const pulse = 1 + Math.sin(t * (1.1 + index % 5 * .13) + particle.phase) * (.08 + disorder * .17) + reactive.peak * .24;
-      const size = clamp(particle.size * 1.8 * pulse, 8, 58);
+      const pos = particlePosition(particle, t * (.12 + index % 4 * .025), chaos * .76);
+      const pulse = 1 + Math.sin(t * .34 + particle.phase) * (.04 + disorder * .12) + reactive.peak * .18;
+      const size = clamp(particle.size * .92 * pulse, 4, 19);
       ctx.save();
       ctx.translate(pos.x, pos.y);
-      ctx.rotate(particle.phase + t * (.08 + disorder * .34) * (index % 2 ? 1 : -1));
-      ctx.globalAlpha = particle.alpha * opacity * (.42 + reactive.peak * .28);
-      const type = index % 5;
+      ctx.rotate((particle.phase - Math.PI) * disorder * .08);
+      ctx.globalAlpha = particle.alpha * opacity * (.34 + reactive.peak * .18);
+      const type = index % 6;
       if (type === 0) {
-        ctx.strokeRect(-size * .65, -size * .32, size * 1.3, size * .64);
+        ctx.beginPath();
+        ctx.moveTo(-size * .5, 0); ctx.lineTo(size * .5, 0);
+        ctx.moveTo(0, -size * .5); ctx.lineTo(0, size * .5);
+        ctx.stroke();
       } else if (type === 1) {
         ctx.beginPath();
-        ctx.arc(0, 0, size * .48, 0, TAU);
-        ctx.stroke();
+        ctx.arc(0, 0, Math.max(1.2, size * .18), 0, TAU);
+        ctx.fill();
       } else if (type === 2) {
         ctx.beginPath();
-        ctx.moveTo(0, -size * .62);
-        ctx.lineTo(size * .58, size * .48);
-        ctx.lineTo(-size * .58, size * .48);
-        ctx.closePath();
+        ctx.moveTo(0, -size * .7); ctx.lineTo(0, size * .7);
         ctx.stroke();
       } else if (type === 3) {
-        ctx.fillRect(-size * .5, -size * .08, size, size * .16);
+        ctx.beginPath();
+        ctx.arc(0, 0, size * .42, 0, TAU);
+        ctx.stroke();
+      } else if (type === 4) {
+        const corner = size * .62;
+        ctx.beginPath();
+        ctx.moveTo(-corner, 0); ctx.lineTo(-corner, -corner); ctx.lineTo(0, -corner);
+        ctx.stroke();
       } else {
         ctx.beginPath();
-        ctx.moveTo(-size * .62, -size * .4);
-        ctx.lineTo(size * .62, size * .4);
-        ctx.moveTo(-size * .62, size * .4);
-        ctx.lineTo(size * .62, -size * .4);
+        ctx.moveTo(-size * .75, 0); ctx.lineTo(size * .75, 0);
         ctx.stroke();
       }
       ctx.restore();
     }
 
-    const centreX = W * (.5 + Math.sin(t * .19) * .035 * disorder);
-    const centreY = H * (.48 + Math.cos(t * .17) * .04 * disorder);
-    const unit = clamp(Math.min(W, H) * (.12 + reactive.bass * .035), 54, 150);
-    ctx.translate(centreX, centreY);
-    ctx.rotate(Math.sin(t * .27) * .2 + t * .025 * chaos);
-    ctx.globalAlpha = opacity * (.48 + reactive.peak * .25);
-    ctx.lineWidth = clamp(unit * .025, 2, 6);
-    ctx.strokeRect(-unit * 1.25, -unit * .72, unit * 2.5, unit * 1.44);
-    ctx.beginPath();
-    ctx.arc(0, 0, unit * .54, t * .18, t * .18 + Math.PI * 1.55);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-unit * 1.55, 0);
-    ctx.lineTo(unit * 1.55, 0);
-    ctx.moveTo(0, -unit * 1.02);
-    ctx.lineTo(0, unit * 1.02);
-    ctx.stroke();
-    ctx.globalAlpha = opacity * (.2 + reactive.mid * .22);
-    ctx.fillRect(-unit * .14, -unit * 1.08, unit * .28, unit * 2.16);
+    const columnXs = [.425, .466, .51, .552, .594];
+    ctx.globalAlpha = opacity * (.25 + reactive.peak * .12);
+    ctx.lineWidth = clamp(Math.min(W, H) * .00105, .8, 1.7);
+    for (let column = 0; column < columnXs.length; column++) {
+      const x = columnXs[column] * W + Math.sin(t * .08 + column) * 3 * disorder;
+      const top = H * (.055 + column * .025);
+      const bottom = H * (.38 + column * .055);
+      ctx.beginPath();
+      for (let segment = 0; segment < 13; segment++) {
+        const y = lerp(top, bottom, segment / 12);
+        const length = H * (.008 + (segment % 4) * .004);
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + length);
+      }
+      ctx.stroke();
+    }
     ctx.restore();
-    drawDenseTextColumns(t, opacity * .9, chaos, reactive, 1.02);
+    drawDenseTextColumns(t, opacity * .72, chaos, reactive, 1.06);
   }
 
   function drawSignatureLine(t, opacity, reactive = audioMetrics) {
-    const sway = Math.sin(t * .35) * W * .008;
+    const sway = Math.sin(t * .2) * W * .004;
     ctx.save();
     ctx.strokeStyle = PALE_ORANGE;
-    ctx.globalAlpha = opacity * (.62 + reactive.peak * .22);
-    ctx.lineWidth = clamp(Math.min(W, H) * .003, 1.5, 4.2);
+    ctx.globalAlpha = opacity * (.5 + reactive.peak * .18);
+    ctx.lineWidth = clamp(Math.min(W, H) * .0018, 1.1, 2.8);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(W * .14, H * .57);
-    ctx.bezierCurveTo(W * .23, H * .22, W * .3, H * .81, W * .4, H * .42);
-    ctx.bezierCurveTo(W * .48, H * .12, W * .48, H * .77, W * .56, H * .43);
-    ctx.bezierCurveTo(W * .63, H * .16, W * .64, H * .71, W * .71, H * .43);
-    ctx.bezierCurveTo(W * .76, H * .25, W * .79, H * .53, W * .86 + sway, H * .36);
+    ctx.moveTo(W * .42, H * .55);
+    ctx.bezierCurveTo(W * .47, H * .39, W * .5, H * .68, W * .55, H * .48);
+    ctx.bezierCurveTo(W * .59, H * .31, W * .61, H * .65, W * .65, H * .47);
+    ctx.bezierCurveTo(W * .69, H * .34, W * .72, H * .54, W * .77 + sway, H * .43);
     ctx.stroke();
     ctx.restore();
   }
@@ -1444,61 +1495,60 @@
   ];
 
   function drawCreditsCross(t, opacity, reactive = audioMetrics) {
-    const finalCredits = Math.sin(t * .55) > .22;
-    const fontSize = clamp(Math.min(W, H) * (finalCredits ? .018 : .015), 10, 19);
+    const cardW = clamp(W * .3, 260, 500);
+    const cardH = cardW * .48;
+    const cardX = W * .5 - cardW * .5 + Math.sin(t * .12) * 3;
+    const cardY = H * .5 - cardH * .5 + Math.cos(t * .11) * 2;
     ctx.save();
+    ctx.fillStyle = WHITE;
+    ctx.globalAlpha = opacity * (.2 + reactive.peak * .04);
+    roundedRectanglePath(cardX, cardY, cardW, cardH, clamp(cardW * .045, 8, 18));
+    ctx.fill();
+    ctx.strokeStyle = ORANGE;
+    ctx.lineWidth = clamp(Math.min(W, H) * .002, 1.2, 3);
+    ctx.globalAlpha = opacity * (.48 + reactive.peak * .14);
+    ctx.stroke();
+    ctx.strokeRect(cardX + cardW * .07, cardY + cardH * .14, cardW * .25, cardH * .7);
     ctx.fillStyle = ORANGE;
-    if (!finalCredits) {
-      ctx.globalAlpha = opacity * (.54 + reactive.peak * .2);
-      ctx.fillRect(W * .52, H * .16, W * .045, H * .6);
-      ctx.fillRect(W * .39, H * .39, W * .3, H * .085);
-    }
-    ctx.globalAlpha = opacity * (.64 + reactive.peak * .18);
-    ctx.font = `500 ${fontSize}px Arial, Helvetica, sans-serif`;
-    ctx.textAlign = 'center';
+    ctx.font = `400 ${clamp(cardH * .082, 8, 14)}px Arial, Helvetica, sans-serif`;
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    const x = finalCredits ? W * .5 : W * .515;
-    const startY = finalCredits ? H * .07 : H * .12;
-    const repetitions = finalCredits ? 2 : 1;
-    for (let block = 0; block < repetitions; block++) {
-      for (let line = 0; line < CREDIT_LINES.length; line++) {
-        const y = startY + (block * CREDIT_LINES.length + line) * fontSize * .95;
-        if (y > H * .9) break;
-        ctx.fillText(CREDIT_LINES[line], x + Math.sin(line * 2.1) * 3, y);
-      }
+    for (let line = 0; line < 8; line++) {
+      const text = CREDIT_LINES[(line + 3) % CREDIT_LINES.length];
+      ctx.globalAlpha = opacity * (.34 + (line % 3) * .06);
+      ctx.fillText(text, cardX + cardW * .38, cardY + cardH * (.13 + line * .095));
     }
+    ctx.globalAlpha = opacity * .55;
+    ctx.beginPath();
+    ctx.arc(cardX + cardW * .79, cardY + cardH * .22, cardH * .065, 0, TAU);
+    ctx.stroke();
+    drawPlus(cardX + cardW * .88, cardY + cardH * .74, cardH * .12, 0, opacity * .5);
     ctx.restore();
-    if (!finalCredits) drawSignatureLine(t, opacity * .4, reactive);
+    drawSignatureLine(t, opacity * .55, reactive);
   }
 
   function drawEndCard(t, opacity, reactive = audioMetrics) {
     ctx.save();
-    ctx.globalAlpha = opacity * (.91 + reactive.peak * .06);
-    ctx.fillStyle = ORANGE;
+    ctx.globalAlpha = opacity * (.95 + reactive.peak * .03);
+    ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#6d2c00';
-    ctx.strokeStyle = '#6d2c00';
-    ctx.lineWidth = clamp(Math.min(W, H) * .005, 2, 6);
-    ctx.globalAlpha = opacity * .38;
-
-    for (let row = 0; row < 4; row++) {
-      for (let column = 0; column < 4; column++) {
-        const x = W * (.08 + column * .035);
-        const y = H * (.08 + row * .045);
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + W * .018, y + H * .028); ctx.stroke();
-      }
-    }
-    ctx.beginPath(); ctx.arc(W * .16, H * .46, Math.min(W, H) * .12, 0, TAU); ctx.stroke();
-    drawWeatherIcon(W * .105, H * .77, Math.min(W, H) * .07, 0, opacity * .35);
-    drawWeatherIcon(W * .18, H * .77, Math.min(W, H) * .07, 2, opacity * .35);
-    drawWeatherIcon(W * .255, H * .77, Math.min(W, H) * .07, 3, opacity * .35);
-    roundedRectanglePath(W * .55, H * .16, W * .31, H * .25, 14); ctx.fill();
-    roundedRectanglePath(W * .55, H * .48, W * .31, H * .25, 14); ctx.fill();
-    ctx.globalAlpha = opacity * .22;
-    ctx.fillStyle = '#ffd39c';
-    ctx.font = `700 ${clamp(Math.min(W, H) * .032, 18, 36)}px Arial, sans-serif`;
-    ctx.fillText('NEXT FRAME', W * .58, H * .3);
-    ctx.fillText('ORANGE UNIT', W * .58, H * .62);
+    const markRadius = clamp(Math.min(W, H) * .072, 34, 74);
+    const markX = W * .405;
+    const markY = H * .5;
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = ORANGE;
+    ctx.beginPath();
+    ctx.arc(markX, markY, markRadius, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = `900 ${markRadius * 1.12}px Arial, Helvetica, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Д', markX, markY + markRadius * .04);
+    ctx.fillStyle = ORANGE;
+    ctx.font = `800 ${clamp(Math.min(W, H) * .06, 30, 66)}px Arial, Helvetica, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText('ДИКСИ', W * .475, markY);
     ctx.restore();
   }
 
@@ -1565,7 +1615,7 @@
 
   function drawDenseTextColumns(t, opacity, chaos, reactive = audioMetrics, spread = 1) {
     const disorder = Math.pow(chaos, 1.55);
-    const layerOpacity = clamp(opacity * (1.7 + reactive.peak * .22), 0, 1);
+    const layerOpacity = clamp(opacity * (.78 + reactive.peak * .16), 0, .78);
     const columns = [
       [.405, .11, .19, 'right',  0, 6, .64, -.008, .88],
       [.465, .19, .21, 'center', 4, 6, .78,  .006, 1.02],
@@ -1577,7 +1627,7 @@
       [.32,  .29, .18, 'right', 31, 5, .48,  .008, .78],
       [.7,   .49, .18, 'left',   2, 5, .46, -.007, .78]
     ];
-    const baseFontSize = clamp(Math.min(W, H) * .0165, 10.5, 19) * (1 + reactive.peak * .04);
+    const baseFontSize = clamp(Math.min(W, H) * .0128, 8.5, 14.5) * (1 + reactive.peak * .035);
     ctx.save();
     ctx.fillStyle = ORANGE;
     ctx.textBaseline = 'top';
@@ -1592,7 +1642,7 @@
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(rotation + Math.sin(t * .15 + phase) * .006 * disorder);
-      ctx.font = `500 ${fontSize}px Arial, Helvetica, sans-serif`;
+      ctx.font = `400 ${fontSize}px Arial, Helvetica, sans-serif`;
       ctx.textAlign = align;
       let cursorY = 0;
       let renderedLine = 0;
@@ -1600,15 +1650,15 @@
         const phrase = TEXT_LINES[(start + phraseIndex * 3) % TEXT_LINES.length];
         const wrapped = wrapCanvasText(phrase, maxWidth);
         for (const line of wrapped) {
-          const jitter = Math.sin(phase + renderedLine * 1.37) * (1 + disorder * 7);
-          const flicker = .72 + .28 * Math.sin(t * .31 + renderedLine * 1.9 + phase) ** 2;
+          const jitter = Math.sin(phase + renderedLine * 1.37) * (.6 + disorder * 4.5);
+          const flicker = .8 + .2 * Math.sin(t * .19 + renderedLine * 1.9 + phase) ** 2;
           ctx.globalAlpha = layerOpacity * alpha * flicker;
           ctx.fillText(line, jitter, cursorY);
           if ((columnIndex + renderedLine) % 5 === 0) {
             ctx.globalAlpha = layerOpacity * alpha * .16;
             ctx.fillText(line, jitter + fontSize * .22, cursorY - fontSize * .16);
           }
-          cursorY += fontSize * (.82 + (renderedLine % 3) * .035);
+          cursorY += fontSize * (.8 + (renderedLine % 3) * .028);
           renderedLine += 1;
         }
         cursorY += fontSize * .08;
@@ -1620,26 +1670,30 @@
 
   function drawTextCollage(t, opacity, chaos, reactive = audioMetrics) {
     const disorder = Math.pow(chaos, 1.55);
-
-    const cardWidth = clamp(W * .2, 120, 280);
-    const cardHeight = H * .62;
-    const cardX = W * .34 + Math.sin(t * .16) * W * .008 * disorder;
-    const cardY = H * .25 + Math.cos(t * .14) * H * .006 * disorder;
     ctx.save();
-    ctx.globalAlpha = opacity * (.34 + reactive.peak * .07);
     ctx.fillStyle = WHITE;
-    roundedRectanglePath(cardX, cardY, cardWidth, cardHeight, clamp(W * .012, 10, 18));
-    ctx.fill();
+    const panels = [
+      [.315, .2, .145, .62, .3],
+      [.438, .13, .105, .72, .2],
+      [.535, .23, .16, .56, .16]
+    ];
+    for (let index = 0; index < panels.length; index++) {
+      const [x, y, width, height, alpha] = panels[index];
+      const drift = Math.sin(t * .11 + index * 1.9) * W * .004 * disorder;
+      ctx.globalAlpha = opacity * (alpha + reactive.peak * .035);
+      roundedRectanglePath(x * W + drift, y * H, width * W, height * H, clamp(W * .004, 3, 7));
+      ctx.fill();
+    }
     ctx.restore();
 
-    const crossX = W * .536 + Math.sin(t * .28) * 7 * disorder;
-    const crossY = H * .33 + Math.cos(t * .25) * 5 * disorder;
-    const verticalWidth = clamp(W * .038, 24, 52) * (1 + reactive.peak * .05);
-    const verticalHeight = H * .15 * (1 + reactive.peak * .05);
-    const horizontalWidth = clamp(W * .075, 58, 104) * (1 + reactive.peak * .06);
-    const horizontalHeight = clamp(H * .052, 28, 56);
+    const crossX = W * .51 + Math.sin(t * .14) * 5 * disorder;
+    const crossY = H * .3 + Math.cos(t * .13) * 4 * disorder;
+    const verticalWidth = clamp(W * .026, 18, 38) * (1 + reactive.peak * .05);
+    const verticalHeight = H * .17 * (1 + reactive.peak * .05);
+    const horizontalWidth = clamp(W * .068, 48, 92) * (1 + reactive.peak * .06);
+    const horizontalHeight = clamp(H * .036, 20, 40);
     ctx.save();
-    ctx.globalAlpha = opacity * (.7 + reactive.peak * .16);
+    ctx.globalAlpha = opacity * (.5 + reactive.peak * .12);
     ctx.fillStyle = ORANGE;
     roundedRectanglePath(crossX, crossY, verticalWidth, verticalHeight, 2);
     ctx.fill();
@@ -1701,7 +1755,9 @@
   function drawDotField(t, opacity, chaos, reactive = audioMetrics) {
     const disorder = Math.pow(chaos, 1.3);
     const mix = chaos * .72;
-    for (const p of dots) {
+    const limit = clamp(Math.round(amountEl.value * .58), 18, dots.length);
+    for (let index = 0; index < limit; index++) {
+      const p = dots[index];
       const g = groupPosition(p.group, t * p.speed);
       const streamX = g.x + p.ox + Math.sin(t * .75 + p.phase) * 8;
       const streamY = g.y + p.oy + Math.cos(t * .55 + p.phase) * 7 + (t * 4 * p.speed) % 18;
@@ -1728,6 +1784,11 @@
     const gate = reactive.gate;
     const sceneGate = .32 + gate * .68;
     const chaos = +chaosEl.value / 100;
+    const monochrome = clamp(weights.doodles || 0, 0, 1);
+    const brightness = lerp(1.06, .64, monochrome);
+    const contrast = lerp(.96, 1.34, monochrome);
+    const saturation = lerp(.92, .08, monochrome);
+    video.style.filter = `brightness(${brightness}) contrast(${contrast}) saturate(${saturation}) grayscale(${monochrome * .94})`;
     ctx.clearRect(0, 0, W, H);
 
     if (weights.titleCard * sceneGate > .001) drawTitleCard(t, weights.titleCard * sceneGate, reactive);
@@ -1787,9 +1848,10 @@
     if (mediaRecorder && mediaRecorder.state !== 'inactive') stopRecording();
     stopHeadTracking();
     audioReactive = false;
+    audioAutoPending = true;
     audioToggle.classList.remove('live', 'error');
-    audioToggle.textContent = 'START AUDIO FX';
-    audioStatus.textContent = 'Нажми Start';
+    audioToggle.textContent = 'AUDIO FX: ARMED';
+    audioStatus.textContent = 'Активируется первым кликом';
     video.pause();
     video.removeAttribute('crossorigin');
     const ready = new Promise((resolve, reject) => {
@@ -1950,6 +2012,15 @@
   document.addEventListener('keydown', event => {
     if (event.key.toLowerCase() === 'm' && event.target.tagName !== 'INPUT') menuButton.click();
   });
+
+  const activateAudioOnGesture = event => {
+    if (event.target === audioToggle) return;
+    if (!audioAutoPending || video.readyState < 2) return;
+    audioAutoPending = false;
+    setAudioReactive(true);
+  };
+  window.addEventListener('pointerdown', activateAudioOnGesture, {capture: true});
+  window.addEventListener('keydown', activateAudioOnGesture, {capture: true});
 
   window.addEventListener('resize', resize);
   resize();
