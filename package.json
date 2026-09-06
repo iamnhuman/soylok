@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.mjs",
     "dev": "node server.mjs",
-    "check": "node --check server.mjs && node --check boot.js && node --check app.js && node --check effects.js && node --check effect-catalog.js && node --check reference-marks.js && node --check reference-compositions.js && node --check tracking.js && node --check tracking-client.js && node --check tracking-worker.js && node --check analysis-cache.js && node --check media.js"
+    "check": "node --check server.mjs && node --check boot.js && node --check app.js && node --check effects.js && node --check composition-random.js && node --check effect-catalog.js && node --check reference-marks.js && node --check reference-compositions.js && node --check tracking.js && node --check tracking-client.js && node --check tracking-worker.js && node --check analysis-cache.js && node --check media.js"
   },
   "engines": {
     "node": ">=18"

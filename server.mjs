@@ -15,8 +15,8 @@ if (!Number.isInteger(port) || port < 0 || port > 65535) {
 const publicFiles = new Set([
   'index.html', 'styles.css', 'app.js', 'effects.js', 'tracking.js', 'media.js',
   'base video.mp4', 'tracking-worker.js', 'tracking-client.js', 'analysis-cache.js',
-  'effect-catalog.js', 'reference-marks.js', 'reference-compositions.js',
-  'boot.js', 'legacy/gpt-5.6-sol.html',
+  'effect-catalog.js', 'reference-marks.js', 'reference-compositions.js', 'composition-random.js',
+  'boot.js', 'legacy/gpt-5.6-sol.html', 'social-preview.png', 'social-preview.svg',
 ]);
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -28,6 +28,8 @@ const contentTypes = {
   '.wasm': 'application/wasm',
   '.task': 'application/octet-stream',
   '.mp4': 'video/mp4',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
 };
 
 function isPublicRelative(relative) {

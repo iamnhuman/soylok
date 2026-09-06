@@ -8,6 +8,7 @@ const video = $('video'), canvas = $('output'), ctx = canvas.getContext('2d', {a
 export const settings = {preset:'sequence',intensity:65,color:'#ff6b16',face:true,hands:true,audio:true,original:false,text:'МЫ СДЕЛАЕМ ЭТО'};
 export const audio = new AudioEngine(video);
 export const renderer = new EffectRenderer();
+try{renderer.setVariant(Number(localStorage.getItem('soylok.astra.composition')));}catch{}
 let ready=false, loading=false, trackerBusy=false, exporting=false, exportController=null, mediaUrl='', downloadUrl='', loadTimer, toastTimer, lastUi=0;
 let metrics={level:0,bass:0,mid:0,high:0,peak:0};
 let trackingCache=null,replayTracking=false;
@@ -142,13 +143,26 @@ function selectPreset(preset){
   settings.preset=preset;
   document.querySelectorAll('[data-preset]').forEach(button=>{const selected=button.dataset.preset===preset;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));});
   $('presetDescription').textContent=PRESETS[preset].description;$('textSetting').hidden=preset!=='sequence'&&PRESETS[preset].group!=='type'&&PRESETS[preset].group!=='layout';
-  $('intensity').closest('.control-section').hidden=preset==='clean';
-  $('variationButton').disabled=preset==='clean';
+  $('intensity').closest('.control-section').hidden=false;
   $('activePreset').textContent=activeLabel();
   updateTimeline();render();
 }
 $('presets').addEventListener('click',event=>{const button=event.target.closest('[data-preset]');if(button)selectPreset(button.dataset.preset);});
-$('variationButton').addEventListener('click',()=>{renderer.setVariant(renderer.variant+1);$('variantNumber').textContent=String(renderer.variant).padStart(2,'0');updateTimeline();paintPreviews();render();});
+function updateCompositionControls(){
+  $('variantNumber').textContent=String(renderer.variant).padStart(2,'0');
+  $('previousComposition').disabled=renderer.variant<=1;
+}
+function changeComposition(variant){
+  if(exporting)return;
+  renderer.setVariant(variant);
+  try{localStorage.setItem('soylok.astra.composition',String(renderer.variant));}catch{}
+  // A new design should be visible even if source comparison was left on.
+  settings.original=false;$('compareButton').setAttribute('aria-pressed','false');$('originalTag').hidden=true;
+  updateCompositionControls();updateTimeline();paintPreviews();render();
+  $('activePreset').textContent=activeLabel();
+}
+$('variationButton').addEventListener('click',()=>changeComposition(renderer.variant+1));
+$('previousComposition').addEventListener('click',()=>changeComposition(Math.max(1,renderer.variant-1)));
 $('intensity').addEventListener('input',event=>{settings.intensity=Number(event.target.value);$('intensityValue').textContent=`${settings.intensity}%`;event.target.style.background=`linear-gradient(to right,var(--accent) ${settings.intensity}%,#4b4f3f ${settings.intensity}%)`;render();});
 function setColor(color){settings.color=color;document.querySelectorAll('[data-color]').forEach(el=>{const selected=el.dataset.color===color;el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));});$('customColor').value=color;paintPreviews();render();}
 document.querySelectorAll('[data-color]').forEach(el=>el.addEventListener('click',()=>setColor(el.dataset.color)));
@@ -224,7 +238,7 @@ $('cancelExport').addEventListener('click',()=>{if(exporting){exportController?.
 $('exportDialog').addEventListener('cancel',event=>{if(exporting){event.preventDefault();exportController?.abort();}});
 window.addEventListener('beforeunload',event=>{if(exporting){event.preventDefault();event.returnValue='';}});
 new ResizeObserver(fitStage).observe($('dropZone'));
-buildLibrary();updateTimeline();updatePlayback();requestAnimationFrame(frame);
+buildLibrary();updateCompositionControls();updateTimeline();updatePlayback();requestAnimationFrame(frame);
 loadSource('./base%20video.mp4','base video.mp4');
 // The player is ready independently of model initialization.
 tracker.init();

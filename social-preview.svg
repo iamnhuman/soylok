@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <pattern id="checker" width="72" height="72" patternUnits="userSpaceOnUse"><rect width="72" height="72" fill="#f2f1e5"/><path d="M0 0h36v36H0zM36 36h36v36H36z" fill="#ff6b16"/></pattern>
+    <clipPath id="panel"><rect x="774" y="54" width="368" height="522" rx="5"/></clipPath>
+  </defs>
+  <rect width="1200" height="630" fill="#151713"/>
+  <rect x="24" y="24" width="1152" height="582" rx="8" fill="none" stroke="#3e4435"/>
+  <g stroke="#ff6b16" stroke-width="4" transform="translate(87 91)"><path d="M-23 0h46M0-23v46M-16-16l32 32M16-16l-32 32"/></g>
+  <text x="127" y="111" fill="#f2f1e5" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="61" letter-spacing="-3">SOYLOK</text>
+  <text x="66" y="164" fill="#adb59b" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" letter-spacing="4">MOTION STUDIO</text>
+  <g fill="#f2f1e5" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="77" letter-spacing="-3"><text x="63" y="300">Твоё видео.</text><text x="63" y="391">Твой ритм.</text></g>
+  <rect x="66" y="437" width="64" height="5" fill="#ff6b16"/>
+  <g font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="500" fill="#d4dac7"><text x="66" y="505">23 эффекта</text><circle cx="213" cy="498" r="3" fill="#ff6b16"/><text x="235" y="505">Автомонтаж</text><circle cx="384" cy="498" r="3" fill="#ff6b16"/><text x="406" y="505">Трекинг</text></g>
+  <text x="66" y="559" fill="#8d977e" font-family="Arial, Helvetica, sans-serif" font-size="17">Создавай клипы прямо в браузере.</text>
+  <rect x="774" y="54" width="368" height="522" rx="5" fill="#ff6b16"/>
+  <g clip-path="url(#panel)">
+    <path d="M719 381h482l184 225H563z" fill="url(#checker)"/>
+    <path d="M756 375h404" stroke="#151713" stroke-width="3"/>
+    <g fill="#151713" transform="translate(1087 111)"><path d="M-29-6h58v12h-58zM-6-29h12v58H-6z"/></g>
+    <circle cx="808" cy="317" r="10" fill="#151713"/>
+    <path d="M1100 280h22M1100 291h22M1100 302h22M1100 313h22" stroke="#151713" stroke-width="2"/>
+    <rect x="1088" y="527" width="28" height="28" fill="#151713"/>
+  </g>
+  <rect x="707" y="177" width="364" height="216" fill="#151713" stroke="#f2f1e5" stroke-width="3"/>
+  <text x="735" y="210" fill="#adb59b" font-family="monospace" font-size="11" letter-spacing="2">MAKE IT MOVE / 01</text>
+  <g fill="#f2f1e5" font-family="Arial, Helvetica, sans-serif" font-size="59" font-weight="800" letter-spacing="-2"><text x="732" y="275">MAKE</text><text x="732" y="336">IT MOVE.</text></g>
+  <circle cx="1021" cy="235" r="22" fill="#ff6b16"/><path d="M1015 225l16 10-16 10z" fill="#151713"/>
+  <path d="M733 366h306" stroke="#525b44"/><path d="M733 366h116" stroke="#ff6b16" stroke-width="3"/>
+</svg>

@@ -2,6 +2,25 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#151613">
+<meta name="description" content="SOYLOK — видеоредактор с 23 эффектами, автомонтажом и трекингом лица и рук. Создавай клипы прямо в браузере.">
+<link rel="canonical" href="https://iamnhuman.github.io/soylok/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SOYLOK">
+<meta property="og:locale" content="ru_RU">
+<meta property="og:title" content="SOYLOK — Твоё видео. Твой ритм.">
+<meta property="og:description" content="23 эффекта, автомонтаж и трекинг лица и рук. Создавай клипы прямо в браузере.">
+<meta property="og:url" content="https://iamnhuman.github.io/soylok/">
+<meta property="og:image" content="https://iamnhuman.github.io/soylok/social-preview.png?v=1">
+<meta property="og:image:secure_url" content="https://iamnhuman.github.io/soylok/social-preview.png?v=1">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="SOYLOK Motion Studio — Твоё видео. Твой ритм. 23 эффекта, автомонтаж и трекинг.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SOYLOK — Твоё видео. Твой ритм.">
+<meta name="twitter:description" content="23 эффекта, автомонтаж и трекинг лица и рук. Создавай клипы прямо в браузере.">
+<meta name="twitter:image" content="https://iamnhuman.github.io/soylok/social-preview.png?v=1">
+<meta name="twitter:image:alt" content="SOYLOK Motion Studio — Твоё видео. Твой ритм.">
 <script>document.documentElement.dataset.version=new URLSearchParams(location.search).get('version')==='gpt-5.6-sol'?'legacy':'astra';</script>
 <title>SOYLOK — Motion Studio</title><link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23ff6b16'/%3E%3Cpath d='M10 20h20M20 10v20' stroke='%23151613' stroke-width='5'/%3E%3C/svg%3E">
@@ -37,7 +56,8 @@
         <div class="library-toolbar"><label for="effectGroup">Библиотека эффектов</label><select id="effectGroup" aria-label="Категория эффектов"><option value="all">Все 23</option><option value="marks">Графика</option><option value="layout">Композиции</option><option value="type">Типографика</option><option value="tracking">Трекинг</option></select></div>
         <div class="preset-grid effect-library" id="effectLibrary" aria-label="Библиотека из 23 эффектов"></div>
       </div>
-      <p id="presetDescription" class="help-text">Смена крупных композиций по всему ролику: 23 типа графики в оранжево-белом стиле референса.</p><button id="variationButton" class="button variation"><span>↻ &nbsp; Новая композиция</span><span class="mono" id="variantNumber">01</span></button>
+      <p id="presetDescription" class="help-text">Каждая новая композиция меняет весь монтаж: выбор и порядок сцен, ритм, макеты и движение графики.</p><button id="variationButton" class="button variation"><span>↻ &nbsp; Новая композиция</span><span class="mono" id="variantNumber" aria-live="polite">01</span></button>
+      <div class="composition-footer"><button id="previousComposition" class="text-button" disabled>← Предыдущая</button><span>4 схемы каждого эффекта</span></div>
     </section>
     <section class="control-section"><div class="range-heading"><label for="intensity">Плотность графики</label><output id="intensityValue" for="intensity">65%</output></div><input id="intensity" class="slider" type="range" min="0" max="100" value="65"><div class="range-ends"><span>Минимум</span><span>Насыщенно</span></div>
       <div class="color-row"><span>Цвет акцента</span><div class="swatches" aria-label="Цвет акцента"><button class="swatch selected" data-color="#ff6b16" style="--swatch:#ff6b16" aria-label="Оранжевый" aria-pressed="true"></button><button class="swatch" data-color="#e9f0dc" style="--swatch:#e9f0dc" aria-label="Молочный" aria-pressed="false"></button><button class="swatch" data-color="#c7f75b" style="--swatch:#c7f75b" aria-label="Лайм" aria-pressed="false"></button><label class="custom-color" title="Выбрать свой цвет"><span>+</span><input id="customColor" type="color" value="#ff6b16" aria-label="Свой цвет"></label></div></div>
