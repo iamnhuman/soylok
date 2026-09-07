@@ -22,9 +22,22 @@ function faceBoxes(faces, width, height) {
   }).filter(Boolean);
 }
 
-/** Draw after all effects so the same logo is present in preview and export. */
-export function drawDixyBrand(ctx, { width, height, faces = [] }) {
-  if (!(width > 0 && height > 0)) return null;
+// Video time keeps flashes identical during playback, seeking, and export.
+export function dixyOutroState(time, duration) {
+  if (!Number.isFinite(time) || !Number.isFinite(duration) || duration <= 0) return null;
+  const length = Math.min(3, duration * .2), start = duration - length;
+  if (time < start || time > duration) return null;
+  const elapsed = time - start;
+  if (duration - time <= Math.min(.35, length * .25)) return { cornerIndex: 0 };
+  const flash = Math.floor(elapsed / .6);
+  if (elapsed - flash * .6 >= .38) return null;
+  return { cornerIndex: flash % 4 };
+}
+
+/** Draw the outro last so preview and export share the same branding. */
+export function drawDixyBrand(ctx, { width, height, time, duration, faces = [] }) {
+  const outro = dixyOutroState(time, duration);
+  if (!outro || !(width > 0 && height > 0)) return null;
   ctx.save();
   try {
     ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
@@ -50,12 +63,12 @@ export function drawDixyBrand(ctx, { width, height, faces = [] }) {
     const overlap = position => boxes.reduce((area, face) => area +
       Math.max(0, Math.min(position.x + cardWidth, face.right) - Math.max(position.x, face.x)) *
       Math.max(0, Math.min(position.y + cardHeight, face.bottom) - Math.max(position.y, face.y)), 0) / (cardWidth * cardHeight);
-    let position = candidates[0];
+    let position = candidates[outro.cornerIndex];
     const defaultOverlap = overlap(position);
     // Stay in the expected corner unless a detected face substantially overlaps
     // it. A large improvement is required, avoiding small landmark jitter.
     if (defaultOverlap > .18) {
-      const alternative = candidates.slice(1).reduce((best, candidate) => overlap(candidate) < overlap(best) ? candidate : best, position);
+      const alternative = candidates.reduce((best, candidate) => overlap(candidate) < overlap(best) ? candidate : best, position);
       if (overlap(alternative) < defaultOverlap * .45) position = alternative;
     }
     const { x, y } = position, centerX = x + padding + radius, centerY = y + padding + radius;

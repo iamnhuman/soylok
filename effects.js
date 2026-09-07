@@ -76,7 +76,7 @@ export class EffectRenderer {
       this.tracking(ctx,w,h,faces.filter(intersects).map(points=>points.map(map)),hands.filter(hand=>intersects(hand.landmarks)).map(hand=>({...hand,landmarks:hand.landmarks.map(map)})),trackColor,false,a);
       ctx.restore();
     }
-    drawDixyBrand(ctx,{width:w,height:h,faces:brandFaces});
+    drawDixyBrand(ctx,{width:w,height:h,time:t,duration:video.duration,faces:brandFaces});
     ctx.restore();
   }
   tracking(ctx,w,h,faces,hands,color,contour,a,t=0,design=null,density=.65){
