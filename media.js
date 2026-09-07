@@ -53,6 +53,7 @@ export class AudioEngine {
 
   reset() {
     this.metrics = silence();
+    this.motion = 0;
     this.previousBass = 0;
     this.lastSampleTime = 0;
   }
@@ -60,7 +61,8 @@ export class AudioEngine {
   /** Actual waveform energy, frequency bands, and bass onsets; no simulated beat. */
   sample() {
     if (!this.analyser || this.context.state !== 'running' || this.video.paused || this.video.ended) {
-      this.reset();
+      this.previousBass=0;this.lastSampleTime=0;
+      this.metrics={...silence(),motion:this.motion};
       return this.metrics;
     }
     this.analyser.getByteFrequencyData(this.frequencyData);
@@ -86,7 +88,8 @@ export class AudioEngine {
     this.previousBass = bass;
     this.lastSampleTime = now;
     // A frequency analyser may retain previous samples briefly after seeking.
-    this.metrics = level < 0.001 ? silence() : { level, bass, mid, high, peak };
+    if(level>=.001)this.motion+=elapsed*(bass*1.8+level+peak*8);
+    this.metrics = level < 0.001 ? {...silence(),motion:this.motion} : { level, bass, mid, high, peak, motion:this.motion };
     return this.metrics;
   }
 }

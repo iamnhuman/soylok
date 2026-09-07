@@ -2,6 +2,8 @@ import { PRESETS, SEQUENCE, makeTimeline } from './effect-catalog.js';
 import { MARK_EFFECTS } from './reference-marks.js';
 import { COMPOSITION_EFFECTS } from './reference-compositions.js';
 import { designFor, normalizeVariant } from './composition-random.js';
+import { drawDixyBrand } from './branding.js';
+import { DETAIL_EFFECTS } from './reference-details.js';
 export { PRESETS, SEQUENCE, EFFECT_KEYS } from './effect-catalog.js';
 const TAU = Math.PI * 2;
 export const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
@@ -51,16 +53,17 @@ export class EffectRenderer {
     const faces=settings.face?(tracking?.faces||[]):[],hands=settings.hands?(tracking?.hands||[]):[];
     let layout;
     if(density>0){
-      const effect=MARK_EFFECTS[preset]||COMPOSITION_EFFECTS[preset];
-      if(effect)layout=effect({ctx,video,w,h,t,localTime:scene.localTime,progress:scene.progress,audio:a,density,color,text:settings.text,anchors:this.anchors,variant:scene.variant,faces,hands});
+      const effect=DETAIL_EFFECTS[preset]||MARK_EFFECTS[preset]||COMPOSITION_EFFECTS[preset];
+      if(effect)layout=effect({ctx,video,w,h,t,localTime:scene.localTime,progress:scene.progress,automatic:settings.preset==='sequence',audio:a,density,color,text:settings.text,annotation:settings.annotation,anchors:this.anchors,variant:scene.variant,faces,hands});
     }
     const trackColor=preset==='clean'?'#f5f4e9':color;
     const trackingDesign=preset==='clean'?designFor('clean',scene.variant):null;
     const windows=layout?.videoWindows||[];
+    const brandFaces=layout?.replaceBase?[]:[...(tracking?.faces||[])];
     if(!layout?.replaceBase){
       ctx.save();
       if(windows.length){ctx.beginPath();ctx.rect(0,0,w,h);windows.forEach(win=>ctx.rect(win.x,win.y,win.width,win.height));ctx.clip('evenodd');}
-      this.tracking(ctx,w,h,faces,hands,trackColor,preset==='clean',a,t,trackingDesign,density);ctx.restore();
+      if(preset!=='callout')this.tracking(ctx,w,h,faces,hands,trackColor,preset==='clean',a,t,trackingDesign,density);ctx.restore();
     }
     // The same real landmarks also follow every reframed/cropped video window.
     // Full-screen title cards have no visible video, hence no phantom face box.
@@ -68,10 +71,12 @@ export class EffectRenderer {
       const crop=win.sourceRect;
       const map=point=>({...point,x:(win.x+(point.x*video.videoWidth-crop.x)/crop.width*win.width)/w,y:(win.y+(point.y*video.videoHeight-crop.y)/crop.height*win.height)/h});
       const intersects=points=>{const b=box(points);return b.r*video.videoWidth>crop.x&&b.x*video.videoWidth<crop.x+crop.width&&b.b*video.videoHeight>crop.y&&b.y*video.videoHeight<crop.y+crop.height;};
+      brandFaces.push(...(tracking?.faces||[]).filter(intersects).map(points=>points.map(map)));
       ctx.save();ctx.beginPath();ctx.rect(win.x,win.y,win.width,win.height);ctx.clip();
       this.tracking(ctx,w,h,faces.filter(intersects).map(points=>points.map(map)),hands.filter(hand=>intersects(hand.landmarks)).map(hand=>({...hand,landmarks:hand.landmarks.map(map)})),trackColor,false,a);
       ctx.restore();
     }
+    drawDixyBrand(ctx,{width:w,height:h,faces:brandFaces});
     ctx.restore();
   }
   tracking(ctx,w,h,faces,hands,color,contour,a,t=0,design=null,density=.65){

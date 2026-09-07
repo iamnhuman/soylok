@@ -10,7 +10,7 @@
   <text x="66" y="164" fill="#adb59b" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" letter-spacing="4">MOTION STUDIO</text>
   <g fill="#f2f1e5" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="77" letter-spacing="-3"><text x="63" y="300">Твоё видео.</text><text x="63" y="391">Твой ритм.</text></g>
   <rect x="66" y="437" width="64" height="5" fill="#ff6b16"/>
-  <g font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="500" fill="#d4dac7"><text x="66" y="505">23 эффекта</text><circle cx="213" cy="498" r="3" fill="#ff6b16"/><text x="235" y="505">Автомонтаж</text><circle cx="384" cy="498" r="3" fill="#ff6b16"/><text x="406" y="505">Трекинг</text></g>
+  <g font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="500" fill="#d4dac7"><text x="66" y="505">27 эффектов</text><circle cx="213" cy="498" r="3" fill="#ff6b16"/><text x="235" y="505">Автомонтаж</text><circle cx="384" cy="498" r="3" fill="#ff6b16"/><text x="406" y="505">Трекинг</text></g>
   <text x="66" y="559" fill="#8d977e" font-family="Arial, Helvetica, sans-serif" font-size="17">Создавай клипы прямо в браузере.</text>
   <rect x="774" y="54" width="368" height="522" rx="5" fill="#ff6b16"/>
   <g clip-path="url(#panel)">

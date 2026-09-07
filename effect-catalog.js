@@ -2,6 +2,10 @@ import { designFor, normalizeVariant } from './composition-random.js';
 
 const entries = [
   ['sequence','Автомонтаж','AUTO CUT','Каждая новая композиция меняет весь монтаж: выбор и порядок сцен, ритм, макеты и движение графики.','auto'],
+  ['signature','Рисующаяся подпись','SIGNATURE','Рукописный росчерк постепенно вырисовывается поверх видео, как в референсе на 1:49.','marks'],
+  ['risingCrosses','Плюсы вверх','PLUS FLOW','Плотное поле маленьких плюсов поднимается вверх. Весь поток синхронно ускоряется на басовых атаках музыки.','marks'],
+  ['callout','Линии и подписи','CALLOUT','Тонкая линия и подпись eyes, hand или finger по реальным точкам трекинга. Свою подпись можно поставить нажатием на кадр.','tracking'],
+  ['rain','Густой дождь','DENSE RAIN','Сотни тонких оранжевых штрихов падают по всему кадру с разной глубиной, длиной и скоростью.','marks'],
   ['title','Оранжевый титр','TITLE','Плоское оранжевое поле и спокойный центральный титр, как в начале референса.','type'],
   ['vector','Кресты и метки','CROSSES','Крупные плюсы, короткие метки и направленные линии. Один уверенный графический мотив.','marks'],
   ['grid','Шахматный ритм','CHECKER','Шахматные плоскости: пол, стены, крупная плитка и диагонали. Новая композиция полностью меняет геометрию.','marks'],
@@ -29,7 +33,7 @@ const entries = [
 export const PRESETS=Object.fromEntries(entries.map(([id,name,code,description,group],index)=>[id,{id,name,code,description,group,index}]));
 export const EFFECT_KEYS=entries.slice(1).map(entry=>entry[0]);
 export const SEQUENCE=[...EFFECT_KEYS];
-const weights={title:.6,grid:1.1,weather:1.3,doodles:1.05,inset:1.2,collage:1.1,contact:1.1,credits:.8};
+const weights={title:.6,signature:1.8,risingCrosses:1.3,callout:1.1,rain:1.2,grid:1.1,weather:1.3,doodles:1.05,inset:1.2,collage:1.1,contact:1.1,credits:.8};
 export function makeTimeline(duration,variant=1){
   variant=normalizeVariant(variant);
   const total=Number.isFinite(duration)&&duration>0?duration:15;
@@ -52,6 +56,8 @@ export function makeTimeline(duration,variant=1){
     selected.push(pool.splice(index,1)[0]);
   }
   if(count>1)selected.push(closings[d.mode]);
+  // Reserve distinct, spread-out shots for the four requested reference motifs.
+  if(count>=6){const featured=d.shuffle('referenceDetails',['signature','risingCrosses','callout','rain']);featured.forEach((key,i)=>{selected[1+Math.floor(i*(count-2)/4)]=key;});}
   const lengths=selected.map((key,index)=>(weights[key]||1)*d.range(`length:${index}`, .65,1.55));
   const units=lengths.reduce((sum,n)=>sum+n,0);let position=0;
   return selected.map((preset,index)=>{

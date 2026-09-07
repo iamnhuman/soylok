@@ -2,24 +2,24 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#151613">
-<meta name="description" content="SOYLOK — видеоредактор с 23 эффектами, автомонтажом и трекингом лица и рук. Создавай клипы прямо в браузере.">
+<meta name="description" content="SOYLOK — видеоредактор с 27 эффектовми, автомонтажом и трекингом лица и рук. Создавай клипы прямо в браузере.">
 <link rel="canonical" href="https://iamnhuman.github.io/soylok/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SOYLOK">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:title" content="SOYLOK — Твоё видео. Твой ритм.">
-<meta property="og:description" content="23 эффекта, автомонтаж и трекинг лица и рук. Создавай клипы прямо в браузере.">
+<meta property="og:description" content="27 эффектов, автомонтаж и трекинг лица и рук. Создавай клипы прямо в браузере.">
 <meta property="og:url" content="https://iamnhuman.github.io/soylok/">
-<meta property="og:image" content="https://iamnhuman.github.io/soylok/social-preview.png?v=1">
-<meta property="og:image:secure_url" content="https://iamnhuman.github.io/soylok/social-preview.png?v=1">
+<meta property="og:image" content="https://iamnhuman.github.io/soylok/social-preview.png">
+<meta property="og:image:secure_url" content="https://iamnhuman.github.io/soylok/social-preview.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="SOYLOK Motion Studio — Твоё видео. Твой ритм. 23 эффекта, автомонтаж и трекинг.">
+<meta property="og:image:alt" content="SOYLOK Motion Studio — Твоё видео. Твой ритм. 27 эффектов, автомонтаж и трекинг.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="SOYLOK — Твоё видео. Твой ритм.">
-<meta name="twitter:description" content="23 эффекта, автомонтаж и трекинг лица и рук. Создавай клипы прямо в браузере.">
-<meta name="twitter:image" content="https://iamnhuman.github.io/soylok/social-preview.png?v=1">
+<meta name="twitter:description" content="27 эффектов, автомонтаж и трекинг лица и рук. Создавай клипы прямо в браузере.">
+<meta name="twitter:image" content="https://iamnhuman.github.io/soylok/social-preview.png">
 <meta name="twitter:image:alt" content="SOYLOK Motion Studio — Твоё видео. Твой ритм.">
 <script>document.documentElement.dataset.version=new URLSearchParams(location.search).get('version')==='gpt-5.6-sol'?'legacy':'astra';</script>
 <title>SOYLOK — Motion Studio</title><link rel="stylesheet" href="styles.css">
@@ -42,27 +42,28 @@
       <div id="mediaLoader" class="stage-message" role="status"><span class="spinner"></span><strong>Открываю видео</strong></div>
       <div id="emptyState" class="stage-message" hidden><span class="empty-symbol">↥</span><strong>Перетащи сюда видео</strong><span>MP4, MOV или WebM · файл остаётся на устройстве</span><button id="emptyImport" class="button primary">Выбрать файл</button></div>
       <div id="dropHint" class="drop-hint" hidden>Отпусти, чтобы открыть видео</div>
-      <div class="preview-tag" id="previewTag"><i></i><span id="activePreset">АВТО · TITLE</span></div><button id="centerPlay" class="center-play" aria-label="Воспроизвести видео">▶</button><span id="originalTag" class="original-tag" hidden>ОРИГИНАЛ</span>
+      <div class="preview-actions" id="previewTag" hidden><button id="variationButton" type="button" class="button stage-variation" aria-label="Новая композиция" disabled><span><span class="variation-icon" aria-hidden="true">↻</span><span class="variation-copy">Новая композиция</span></span><span class="mono" id="variantNumber" aria-live="polite">01</span></button></div><button id="centerPlay" class="center-play" aria-label="Воспроизвести видео">▶</button><span id="originalTag" class="original-tag" hidden>ОРИГИНАЛ</span>
     </div></div>
     <div class="transport"><div class="transport-left"><button id="restartButton" class="icon-button" aria-label="В начало">↤</button><button id="playButton" class="play-button" aria-label="Воспроизвести">▶</button><span class="timecode"><span id="currentTime">00:00.0</span><span class="time-divider">/</span><span id="duration">00:00.0</span></span></div><div class="transport-right"><button id="muteButton" class="text-button" aria-pressed="false">Звук вкл.</button><span class="keyboard-hint"><kbd>space</kbd> пауза</span></div></div>
-    <div class="timeline-area"><div class="timeline-ruler" id="timelineRuler" aria-hidden="true"></div><div class="timeline-track"><div class="clip-strip" id="clipStrip" aria-hidden="true"></div><div class="timeline-progress" id="timelineProgress"></div><input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Позиция видео"></div><div class="timeline-caption"><span><i class="orange-dot"></i> <span id="timelineLabel">Векторная графика</span></span><span id="frameInfo" class="mono">16:9 · 30 FPS EXPORT</span></div></div>
+    <div class="timeline-area"><div class="timeline-ruler" id="timelineRuler" aria-hidden="true"></div><div class="timeline-track"><div class="clip-strip" id="clipStrip" aria-hidden="true"></div><div class="timeline-progress" id="timelineProgress"></div><input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Позиция видео"></div><div class="timeline-caption"><span class="timeline-scene"><i class="orange-dot"></i><span class="timeline-scene-copy"><span id="timelineLabel">Векторная графика</span><span id="activePreset" class="mono active-scene">АВТО · TITLE</span></span></span><span id="frameInfo" class="mono">16:9 · 30 FPS EXPORT</span></div></div>
     <footer class="editor-footer"><span>Твоё видео. Твой ритм.</span><span class="mono">SOYLOK / 003</span></footer>
   </section>
   <aside class="inspector" aria-label="Настройки эффектов">
     <div class="inspector-title"><h1>Эффекты</h1><span class="version-badge">STUDIO / 03</span></div>
-    <section class="control-section preset-section"><div class="section-label"><h2>Визуальный стиль</h2><span id="effectCount">23 эффекта</span></div>
+    <section class="control-section preset-section"><div class="section-label"><h2>Визуальный стиль</h2><span id="effectCount">27 эффектов</span></div>
       <div id="presets">
-        <button class="preset auto-preset selected" data-preset="sequence" aria-pressed="true"><span class="auto-symbols" aria-hidden="true"><i>+</i><b>Aa</b><em>▥</em></span><span class="auto-copy"><strong>Автомонтаж</strong><small>Весь клип · 23 типа эффектов</small></span><span class="auto-number">00</span></button>
-        <div class="library-toolbar"><label for="effectGroup">Библиотека эффектов</label><select id="effectGroup" aria-label="Категория эффектов"><option value="all">Все 23</option><option value="marks">Графика</option><option value="layout">Композиции</option><option value="type">Типографика</option><option value="tracking">Трекинг</option></select></div>
-        <div class="preset-grid effect-library" id="effectLibrary" aria-label="Библиотека из 23 эффектов"></div>
+        <button class="preset auto-preset selected" data-preset="sequence" aria-pressed="true"><span class="auto-symbols" aria-hidden="true"><i>+</i><b>Aa</b><em>▥</em></span><span class="auto-copy"><strong>Автомонтаж</strong><small>Весь клип · 27 типов эффектов</small></span><span class="auto-number">00</span></button>
+        <div class="library-toolbar"><label for="effectGroup">Библиотека эффектов</label><select id="effectGroup" aria-label="Категория эффектов"><option value="all">Все 27</option><option value="marks">Графика</option><option value="layout">Композиции</option><option value="type">Типографика</option><option value="tracking">Трекинг</option></select></div>
+        <div class="preset-grid effect-library" id="effectLibrary" aria-label="Библиотека из 27 эффектов"></div>
       </div>
-      <p id="presetDescription" class="help-text">Каждая новая композиция меняет весь монтаж: выбор и порядок сцен, ритм, макеты и движение графики.</p><button id="variationButton" class="button variation"><span>↻ &nbsp; Новая композиция</span><span class="mono" id="variantNumber" aria-live="polite">01</span></button>
+      <p id="presetDescription" class="help-text">Каждая новая композиция меняет весь монтаж: выбор и порядок сцен, ритм, макеты и движение графики.</p>
       <div class="composition-footer"><button id="previousComposition" class="text-button" disabled>← Предыдущая</button><span>4 схемы каждого эффекта</span></div>
     </section>
     <section class="control-section"><div class="range-heading"><label for="intensity">Плотность графики</label><output id="intensityValue" for="intensity">65%</output></div><input id="intensity" class="slider" type="range" min="0" max="100" value="65"><div class="range-ends"><span>Минимум</span><span>Насыщенно</span></div>
       <div class="color-row"><span>Цвет акцента</span><div class="swatches" aria-label="Цвет акцента"><button class="swatch selected" data-color="#ff6b16" style="--swatch:#ff6b16" aria-label="Оранжевый" aria-pressed="true"></button><button class="swatch" data-color="#e9f0dc" style="--swatch:#e9f0dc" aria-label="Молочный" aria-pressed="false"></button><button class="swatch" data-color="#c7f75b" style="--swatch:#c7f75b" aria-label="Лайм" aria-pressed="false"></button><label class="custom-color" title="Выбрать свой цвет"><span>+</span><input id="customColor" type="color" value="#ff6b16" aria-label="Свой цвет"></label></div></div>
       <div class="text-setting" id="textSetting"><label for="titleText">Текст в кадре</label><input id="titleText" type="text" value="МЫ СДЕЛАЕМ ЭТО" maxlength="42"></div>
     </section>
+    <section id="annotationSetting" class="control-section annotation-setting" hidden><label for="annotationTarget">Подпись объекта</label><select id="annotationTarget"><option value="auto">Авто: глаза или руки</option><option value="eyes">Глаза</option><option value="hands">Руки</option><option value="manual">Своя точка в кадре</option></select><input id="annotationLabel" type="text" value="объект" maxlength="32" aria-label="Текст подписи объекта" disabled><p class="help-text">Для своей подписи выбери «Своя точка в кадре» и нажми на нужное место видео. Эта точка фиксирована; глаза и руки следуют трекингу.</p></section>
     <section class="control-section tracking-section"><div class="section-label"><h2>Трекинг</h2><span id="trackingStatus" class="status-badge" role="status">Загрузка</span></div>
       <label class="switch-row"><span><strong>Лицо</strong><small>Рамка, глаза и контур</small></span><input id="faceToggle" type="checkbox" role="switch" checked><span class="switch-ui" aria-hidden="true"></span></label>
       <label class="switch-row"><span><strong>Руки</strong><small>Скелет и кончики пальцев</small></span><input id="handToggle" type="checkbox" role="switch" checked><span class="switch-ui" aria-hidden="true"></span></label>

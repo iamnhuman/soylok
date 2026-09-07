@@ -16,7 +16,7 @@ const publicFiles = new Set([
   'index.html', 'styles.css', 'app.js', 'effects.js', 'tracking.js', 'media.js',
   'base video.mp4', 'tracking-worker.js', 'tracking-client.js', 'analysis-cache.js',
   'effect-catalog.js', 'reference-marks.js', 'reference-compositions.js', 'composition-random.js',
-  'boot.js', 'legacy/gpt-5.6-sol.html', 'social-preview.png', 'social-preview.svg',
+  'boot.js', 'branding.js', 'reference-details.js', 'legacy/gpt-5.6-sol.html', 'social-preview.png', 'social-preview.svg',
 ]);
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',

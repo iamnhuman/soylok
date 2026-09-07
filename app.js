@@ -5,7 +5,7 @@ import { analyzeTracking, cachedFrame, seekFrame } from './analysis-cache.js';
 
 const $ = id => document.getElementById(id);
 const video = $('video'), canvas = $('output'), ctx = canvas.getContext('2d', {alpha:false});
-export const settings = {preset:'sequence',intensity:65,color:'#ff6b16',face:true,hands:true,audio:true,original:false,text:'МЫ СДЕЛАЕМ ЭТО'};
+export const settings = {preset:'sequence',intensity:65,color:'#ff6b16',face:true,hands:true,audio:true,original:false,text:'МЫ СДЕЛАЕМ ЭТО',annotation:{target:'auto',label:'объект',x:.5,y:.5}};
 export const audio = new AudioEngine(video);
 export const renderer = new EffectRenderer();
 try{renderer.setVariant(Number(localStorage.getItem('soylok.astra.composition')));}catch{}
@@ -21,6 +21,7 @@ function updatePlayback(){
   $('playButton').textContent=paused?'▶':'Ⅱ';$('playButton').setAttribute('aria-label',paused?'Воспроизвести':'Пауза');
   $('playButton').disabled=!ready || exporting;$('restartButton').disabled=!ready || exporting;
   $('centerPlay').hidden=!ready || !paused || exporting;
+  updateCompositionControls();
 }
 async function togglePlayback(){
   if(exporting)return;
@@ -92,14 +93,14 @@ function loadSource(source,name){
   video.pause();ready=false;loading=true;tracker.reset();audio.reset();
   trackingCache=null;
   clearTimeout(loadTimer);$('mediaLoader').hidden=false;$('emptyState').hidden=true;$('centerPlay').hidden=true;
-  $('previewTag').hidden=true;$('fileName').textContent=name;$('fileName').title=name;$('exportButton').disabled=true;
+  $('fileName').textContent=name;$('fileName').title=name;$('exportButton').disabled=true;
   $('currentTime').textContent='00:00.0';$('duration').textContent='00:00.0';$('sourceInfo').textContent='—';
   video.src=source;video.load();updatePlayback();
   loadTimer=setTimeout(()=>mediaFailure('Видео не загрузилось. Попробуй открыть его через «Открыть видео».'),25000);
 }
 function mediaFailure(message){
   ready=false;loading=false;clearTimeout(loadTimer);$('mediaLoader').hidden=true;$('emptyState').hidden=false;
-  $('previewTag').hidden=true;$('exportButton').disabled=true;updatePlayback();toast(message);
+  $('exportButton').disabled=true;updatePlayback();toast(message);
 }
 function openFile(file){
   if(!file || exporting)return;
@@ -108,7 +109,7 @@ function openFile(file){
   if(previous)URL.revokeObjectURL(previous);
 }
 video.addEventListener('loadeddata',()=>{
-  clearTimeout(loadTimer);loading=false;ready=true;$('mediaLoader').hidden=true;$('emptyState').hidden=true;$('previewTag').hidden=false;
+  clearTimeout(loadTimer);loading=false;ready=true;$('mediaLoader').hidden=true;$('emptyState').hidden=true;
   $('sourceInfo').textContent=`${video.videoWidth} × ${video.videoHeight}`;$('exportButton').disabled=false;
   resizeOutput();updateTimeline();updatePlayback();
   paintPreviews();
@@ -143,17 +144,21 @@ function selectPreset(preset){
   settings.preset=preset;
   document.querySelectorAll('[data-preset]').forEach(button=>{const selected=button.dataset.preset===preset;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));});
   $('presetDescription').textContent=PRESETS[preset].description;$('textSetting').hidden=preset!=='sequence'&&PRESETS[preset].group!=='type'&&PRESETS[preset].group!=='layout';
+  $('annotationSetting').hidden=preset!=='callout';
   $('intensity').closest('.control-section').hidden=false;
   $('activePreset').textContent=activeLabel();
   updateTimeline();render();
 }
 $('presets').addEventListener('click',event=>{const button=event.target.closest('[data-preset]');if(button)selectPreset(button.dataset.preset);});
 function updateCompositionControls(){
+  const available=ready&&!loading&&!exporting;
+  $('previewTag').hidden=!available;
+  $('variationButton').disabled=!available;
   $('variantNumber').textContent=String(renderer.variant).padStart(2,'0');
-  $('previousComposition').disabled=renderer.variant<=1;
+  $('previousComposition').disabled=!available||renderer.variant<=1;
 }
 function changeComposition(variant){
-  if(exporting)return;
+  if(!ready||loading||exporting)return;
   renderer.setVariant(variant);
   try{localStorage.setItem('soylok.astra.composition',String(renderer.variant));}catch{}
   // A new design should be visible even if source comparison was left on.
@@ -163,6 +168,9 @@ function changeComposition(variant){
 }
 $('variationButton').addEventListener('click',()=>changeComposition(renderer.variant+1));
 $('previousComposition').addEventListener('click',()=>changeComposition(Math.max(1,renderer.variant-1)));
+$('annotationTarget').addEventListener('change',event=>{settings.annotation.target=event.target.value;$('annotationLabel').disabled=event.target.value!=='manual';render();});
+$('annotationLabel').addEventListener('input',event=>{settings.annotation.label=event.target.value;render();});
+canvas.addEventListener('click',event=>{if(exporting||settings.preset!=='callout'||settings.annotation.target!=='manual')return;const box=canvas.getBoundingClientRect();const scale=Math.min(box.width/canvas.width,box.height/canvas.height),width=canvas.width*scale,height=canvas.height*scale;settings.annotation.x=clamp((event.clientX-box.left-(box.width-width)/2)/width,0,1);settings.annotation.y=clamp((event.clientY-box.top-(box.height-height)/2)/height,0,1);render();});
 $('intensity').addEventListener('input',event=>{settings.intensity=Number(event.target.value);$('intensityValue').textContent=`${settings.intensity}%`;event.target.style.background=`linear-gradient(to right,var(--accent) ${settings.intensity}%,#4b4f3f ${settings.intensity}%)`;render();});
 function setColor(color){settings.color=color;document.querySelectorAll('[data-color]').forEach(el=>{const selected=el.dataset.color===color;el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));});$('customColor').value=color;paintPreviews();render();}
 document.querySelectorAll('[data-color]').forEach(el=>el.addEventListener('click',()=>setColor(el.dataset.color)));
